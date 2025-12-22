@@ -8,105 +8,97 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: black; overflow: hidden; font-family: 'Courier New', monospace; }
 
-        /* Layers */
-        #game-container { position: relative; width: 100vw; height: 100vh; }
-        #office { width: 100%; height: 100%; background-size: cover; background-position: center; transition: filter 0.1s; }
+        #game-container { position: relative; width: 100vw; height: 100vh; background: #000; }
         
-        /* GUI Overlay for Noise */
-        #noise-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 900; pointer-events: none; opacity: 0.15; mix-blend-mode: screen; }
-
-        /* Time Display */
-        #time-display { position: absolute; top: 15px; left: 20px; color: white; font-size: 1.5rem; font-weight: bold; text-shadow: 2px 2px black; z-index: 30; }
-
-        /* Buttons */
-        .btn {
-            position: absolute; background: rgba(0,0,0,0.4); border: 2px solid white; color: white;
-            padding: 18px; font-weight: bold; text-transform: uppercase; border-radius: 6px; z-index: 20; pointer-events: auto;
+        /* 1. Office Background */
+        #office { 
+            width: 100%; height: 100%; 
+            background-size: cover; background-position: center; 
+            transition: filter 0.1s; 
         }
-        .btn:active { background: rgba(255,255,255,0.3); }
 
-        /* Positioning */
-        #btn-l { left: 15px; bottom: 45%; }
-        #btn-r { right: 15px; bottom: 45%; }
-        #btn-cam { bottom: 15px; left: 50%; transform: translateX(-50%); width: 180px; text-align: center; }
-        #btn-v { bottom: 15px; right: 15px; font-size: 0.7rem; }
-        #btn-pause { top: 15px; right: 15px; border-width: 1px; font-size: 0.7rem; padding: 8px; }
+        /* 2. Permanent Noise Overlay */
+        #noise-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1500; pointer-events: none; opacity: 0.12; 
+            mix-blend-mode: screen; background-color: transparent;
+        }
 
-        /* Monitor Overlay */
+        /* 3. Monitor View (The Tablet) */
         #monitor {
-            position: absolute; top:0; left:0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); z-index: 1000; display: none;
-            flex-direction: column; align-items: center; justify-content: center;
-            transition: opacity 0.3s; opacity: 0;
+            position: absolute; bottom: -100%; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 1000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: bottom 0.4s ease-in-out; /* Slide Up/Down transition */
         }
-        #monitor.active { display: flex; opacity: 1; }
+        #monitor.active { bottom: 0; }
 
-        #viewport { width: 85vw; height: 65vh; border: 3px solid white; background-size: cover; background-position: center; position: relative; }
-        #cam-label { position: absolute; top:10px; left:10px; background: black; border: 1px solid white; padding: 5px; color: white; }
-        #exit-mon { position: absolute; top: 10px; right: 10px; color: red; border: 2px solid red; background: black; padding: 10px; }
-
+        /* Monitor UI */
+        #viewport { width: 85vw; height: 60vh; border: 4px solid white; background-size: cover; background-position: center; position: relative; }
+        #cam-label { position: absolute; top:10px; left:10px; background: black; border: 1px solid white; padding: 5px; color: white; font-weight: bold; }
+        #exit-mon { position: absolute; top: 10px; right: 10px; color: red; border: 2px solid red; background: black; padding: 10px; font-weight: bold; }
         .cam-row { margin-top: 15px; display: flex; gap: 10px; }
-        .cam-btn { padding: 12px; border: 1px solid #777; background: black; color: white; font-size: 0.8rem; }
-        .selected { border-color: #0f0; color: #0f0; }
+        .cam-btn { padding: 12px 20px; border: 1px solid #777; background: black; color: white; font-size: 0.9rem; }
+        .selected { border-color: #0f0; color: #0f0; box-shadow: 0 0 10px #0f0; }
 
-        /* Win/Jumpscare Layers */
+        /* Game Elements */
+        #time-display { position: absolute; top: 15px; left: 20px; color: white; font-size: 1.5rem; text-shadow: 2px 2px black; z-index: 50; }
+        .btn { position: absolute; background: rgba(0,0,0,0.6); border: 2px solid white; color: white; padding: 20px; font-weight: bold; border-radius: 8px; z-index: 40; }
+        #btn-l { left: 15px; bottom: 40%; }
+        #btn-r { right: 15px; bottom: 40%; }
+        #btn-cam { bottom: 15px; left: 50%; transform: translateX(-50%); width: 220px; text-align: center; }
+        #btn-v { bottom: 15px; right: 15px; font-size: 0.7rem; }
+        
+        /* Jumpscare & Win */
         #js-layer, #win-layer { display: none; position: absolute; top:0; left:0; width:100%; height:100%; z-index: 5000; background: black; }
         #js-img { width: 140%; height: 140%; position: absolute; top: -20%; left: -20%; object-fit: contain; }
-        #win-content { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: white; text-align: center; }
-        
-        .shake { animation: s 0.08s steps(2) infinite; }
-        @keyframes s { 0%{transform:translate(20px,20px)} 100%{transform:translate(-20px,-20px)} }
+        .shake { animation: s 0.05s infinite; }
+        @keyframes s { 0%{transform:translate(15px,15px)} 50%{transform:translate(-15px,-15px)} 100%{transform:translate(15px,-15px)} }
 
         /* Menu */
-        #menu { position: absolute; top:0; left:0; width: 100%; height: 100%; background: #000; z-index: 6000; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        .red { color: red; margin: 0; }
+        #menu { position: absolute; top:0; left:0; width: 100%; height: 100%; background: #000; z-index: 6000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .blink { animation: bl 0.6s infinite; border-color: red !important; color: red !important; }
-        @keyframes bl { 50% { opacity: 0.4; } }
+        @keyframes bl { 50% { opacity: 0.3; } }
     </style>
 </head>
 <body>
 
-    <canvas id="noise-canvas"></canvas>
-
-    <div id="menu">
-        <h1 class="red" style="font-size: 2.5rem;">BFDI's Night Shift</h1>
-        <h2 class="red" style="font-size: 1rem;">Five Nights at beefydies</h2>
-        <br><br>
-        <button class="btn" style="position:static" onclick="start()">PLAY</button>
-        <p id="load" style="color:white; display:none; margin-top:20px;">LOADING CAMERA FEEDS...</p>
-    </div>
-
     <div id="game-container">
+        <canvas id="noise-overlay"></canvas>
+
         <div id="time-display">12 AM</div>
         <div id="office"></div>
-        <button id="btn-pause" class="btn" onclick="location.reload()">MENU</button>
+
         <button id="btn-l" class="btn" ontouchstart="lt('l')" ontouchend="lt('o')">LIGHT L</button>
         <button id="btn-r" class="btn" ontouchstart="lt('r')" ontouchend="lt('o')">LIGHT R</button>
-        <button id="btn-cam" class="btn" onclick="openM()">CAMERAS</button>
+        <button id="btn-cam" class="btn" onclick="openM()">OPEN MONITOR</button>
         <button id="btn-v" class="btn" onclick="rv()">RESET VENT</button>
 
         <div id="monitor">
-            <button id="exit-mon" onclick="closeM()">EXIT MONITOR</button>
+            <button id="exit-mon" onclick="closeM()">CLOSE MONITOR</button>
             <div id="viewport"><div id="cam-label">CAM</div></div>
             <div class="cam-row">
-                <button class="cam-btn" onclick="sw('w')">West Hall</button>
-                <button class="cam-btn" onclick="sw('c')">L. Corner</button>
-                <button class="cam-btn" onclick="sw('e')">East Hall</button>
+                <button class="cam-btn" onclick="sw('w', this)">WEST HALL</button>
+                <button class="cam-btn" onclick="sw('c', this)">L. CORNER</button>
+                <button class="cam-btn" onclick="sw('e', this)">EAST HALL</button>
             </div>
         </div>
 
         <div id="js-layer"><img id="js-img" src="" class="shake"></div>
-        <div id="win-layer">
-            <div id="win-content">
-                <h1 style="font-size: 5rem; color: #0f0;">5:59</h1>
-                <h1 style="font-size: 8rem; color: #0f0;">6 AM</h1>
-                <p style="font-size: 1.5rem;">Great Job! You survived the night.</p>
-                <button class="btn" style="position:static; margin-top:20px;" onclick="location.reload()">MAIN MENU</button>
-            </div>
+        <div id="win-layer" style="display:none; color:white; text-align:center; padding-top:20%;">
+            <h1 style="font-size: 5rem; color: #0f0;">6 AM</h1>
+            <button class="btn" style="position:static" onclick="location.reload()">RESTART</button>
         </div>
     </div>
 
-    <audio id="sc" src="five-nights-at-freddys-full-scream-sound_2.mp3"></audio>
+    <div id="menu">
+        <h1 style="color:red; font-size: 2.5rem; margin:0;">BFDI's Night Shift</h1>
+        <h2 style="color:red; font-size: 1rem; margin-top:5px;">Five Nights at beefydies</h2>
+        <br>
+        <button class="btn" style="position:static" onclick="start()">PLAY NIGHT</button>
+    </div>
+
+    <audio id="sc" src="https://s134-isny.freeconvert.com/task/694957662732b0f98d9b808f/FNAF_%20Jumpscare%20(FNAF%206)%20-%20Gaming%20Sound%20Effect%20(HD).mp3"></audio>
 
     <script>
         const urls = {
@@ -129,86 +121,93 @@
         let wCh = Math.random() > 0.5 ? 'f' : 'l', cCh = 'g';
 
         function start() {
-            document.getElementById('load').style.display = 'block';
-            setTimeout(() => {
-                document.getElementById('menu').style.display = 'none';
-                active = true;
-                document.getElementById('office').style.backgroundImage = `url('${urls.off}')`;
-                noise(); vLoop(); aiLoop(); clockLoop();
-            }, 6000);
+            document.getElementById('menu').style.display = 'none';
+            active = true;
+            document.getElementById('office').style.backgroundImage = `url('${urls.off}')`;
+            noise(); ventLoop(); clockLoop(); flowerLoop();
         }
 
-        function clockLoop() {
-            // One "Hour" lasts 60 seconds
-            setInterval(() => {
-                if(!active) return;
-                hour++;
-                if(hour >= 6) win();
-                else document.getElementById('time-display').innerText = hour + " AM";
-            }, 60000);
+        function openM() { 
+            if(!active) return; 
+            mon = true; 
+            document.getElementById('monitor').classList.add('active'); 
+            sw(cur, null); 
         }
 
-        function win() {
-            active = false;
-            document.getElementById('win-layer').style.display = 'block';
-        }
-
-        function lt(s) {
-            if(mon) return;
-            let bg = urls.off;
-            if(s==='l') bg = urls.offL;
-            if(s==='r') bg = urls.offR;
-            document.getElementById('office').style.backgroundImage = `url('${bg}')`;
-        }
-
-        function openM() { if(!active) return; mon = true; document.getElementById('monitor').classList.add('active'); sw(cur); }
         function closeM() { 
-            mon = false; document.getElementById('monitor').classList.remove('active'); 
-            if(Math.random() < 0.45) {
+            mon = false; 
+            document.getElementById('monitor').classList.remove('active'); 
+            // AI Movement on Close
+            if(Math.random() < 0.4) {
                 let atk = null;
                 if(wCh) { atk = wCh; wCh = null; } else if(cCh) { atk = cCh; cCh = null; }
                 if(atk) setTimeout(() => { if(active) jmp(atk); }, 5000);
             }
         }
 
-        function sw(c) {
-            cur = c; const v = document.getElementById('viewport'), l = document.getElementById('cam-label');
+        function sw(c, btn) {
+            cur = c; 
+            const v = document.getElementById('viewport'), l = document.getElementById('cam-label');
+            document.querySelectorAll('.cam-btn').forEach(b => b.classList.remove('selected'));
+            if(btn) btn.classList.add('selected');
+            
             let img = urls.eE;
-            if(c==='w') { l.innerText = "West Hall"; img = wCh==='f' ? urls.wF : (wCh==='l' ? urls.wL : urls.wE); }
-            else if(c==='c') { l.innerText = "L. Corner"; img = cCh==='g' ? urls.cG : urls.cE; }
+            if(c==='w') { l.innerText = "WEST HALL"; img = wCh==='f' ? urls.wF : (wCh==='l' ? urls.wL : urls.wE); }
+            else if(c==='c') { l.innerText = "L. CORNER"; img = cCh==='g' ? urls.cG : urls.cE; }
             v.style.backgroundImage = `url('${img}')`;
         }
 
-        function rv() { vt = 25; document.getElementById('btn-v').classList.remove('blink'); document.getElementById('btn-cam').classList.remove('blink'); document.getElementById('office').style.filter = "brightness(1)"; }
+        function lt(s) {
+            if(mon) return;
+            let bg = (s==='l') ? urls.offL : (s==='r' ? urls.offR : urls.off);
+            document.getElementById('office').style.backgroundImage = `url('${bg}')`;
+        }
+
+        function rv() { 
+            vt = 25; 
+            document.getElementById('btn-v').classList.remove('blink');
+            document.getElementById('office').style.filter = "brightness(1)";
+        }
         
-        function vLoop() {
+        function ventLoop() {
             setInterval(() => {
                 if(!active) return; vt--;
-                if(vt <= 10) { document.getElementById('btn-v').classList.add('blink'); document.getElementById('btn-cam').classList.add('blink'); }
+                if(vt <= 10) document.getElementById('btn-v').classList.add('blink');
                 if(vt <= 0) document.getElementById('office').style.filter = "brightness(0)";
             }, 1000);
         }
 
-        function aiLoop() {
-            setInterval(() => { if(active && Math.random() < 0.25) jmp('fl'); }, 9000);
+        function clockLoop() {
+            setInterval(() => {
+                if(!active) return;
+                hour++;
+                if(hour >= 6) { active = false; document.getElementById('win-layer').style.display = 'block'; }
+                else document.getElementById('time-display').innerText = hour + " AM";
+            }, 60000);
+        }
+
+        function flowerLoop() {
+            setInterval(() => { if(active && Math.random() < 0.15) jmp('fl'); }, 12000);
         }
 
         function jmp(n) {
-            active = false; const l = document.getElementById('js-layer'), i = document.getElementById('js-img'), s = document.getElementById('sc');
+            active = false;
+            const l = document.getElementById('js-layer'), i = document.getElementById('js-img'), s = document.getElementById('sc');
             const map = { f: urls.jsF, l: urls.jsL, g: urls.jsG, fl: urls.jsFl };
-            i.src = map[n]; l.style.display = 'block'; s.volume = 1; s.play();
-            setTimeout(() => location.reload(), 2200);
+            i.src = map[n]; l.style.display = 'block'; 
+            s.currentTime = 0; s.play();
+            setTimeout(() => location.reload(), 2500);
         }
 
         function noise() {
-            const c = document.getElementById('noise-canvas'), x = c.getContext('2d');
+            const c = document.getElementById('noise-overlay'), x = c.getContext('2d');
             const r = () => { c.width = window.innerWidth/2; c.height = window.innerHeight/2; };
             window.addEventListener('resize', r); r();
-            const l = () => {
+            const draw = () => {
                 const id = x.createImageData(c.width, c.height), b = new Uint32Array(id.data.buffer);
-                for(let i=0; i<b.length; i++) b[i] = Math.random() < 0.5 ? 0x15FFFFFF : 0;
-                x.putImageData(id, 0, 0); requestAnimationFrame(l);
-            }; l();
+                for(let i=0; i<b.length; i++) b[i] = Math.random() < 0.5 ? 0x18FFFFFF : 0;
+                x.putImageData(id, 0, 0); requestAnimationFrame(draw);
+            }; draw();
         }
     </script>
 </body>
