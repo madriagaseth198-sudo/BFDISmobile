@@ -1,786 +1,165 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Volume2, VolumeX, Power, Camera, X, Lightbulb, Upload } from 'lucide-react';
-
-export default function FNAFGame() {
-  const [gameState, setGameState] = useState('upload');
-  const [currentView, setCurrentView] = useState('office');
-  const [selectedCamera, setSelectedCamera] = useState('CAM1');
-  const [power, setPower] = useState(100);
-  const [hour, setHour] = useState(0);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [animatronicPositions, setAnimatronicPositions] = useState({
-    char1: 'CAM1', // Starts in Left Hall
-    char2: 'CAM1', // Starts in Left Hall
-    char3: 'CAM3', // Starts in Left Corner
-    char4: 'CAM2'  // Invisible - doesn't show in cameras
-  });
-  const [leftLightOn, setLeftLightOn] = useState(false);
-  const [rightLightOn, setRightLightOn] = useState(false);
-  const [leftDoorClosed, setLeftDoorClosed] = useState(false);
-  const [rightDoorClosed, setRightDoorClosed] = useState(false);
-  const [jumpscareCharacter, setJumpscareCharacter] = useState(null);
-  const [showTryAgain, setShowTryAgain] = useState(false);
-
-  const [images, setImages] = useState({
-    officeLeft: null,
-    officeRight: null,
-    officeBoth: null,
-    jumpscare1: null,
-    jumpscare2: null,
-    jumpscare3: null,
-    jumpscare4: null,
-    cam1: null,
-    cam2: null,
-    cam3: null,
-    // Specific animatronic in camera images
-    char1_cam1: null, // Character 1 in Left Hall
-    char2_cam1: null, // Character 2 in Left Hall
-    char3_cam3: null  // Character 3 in Left Corner
-    // Character 4 doesn't appear in cameras (invisible/teleporter)
-  });
-
-  const cameras = {
-    CAM1: { name: 'Left Hall' },
-    CAM2: { name: 'Right Hall' },
-    CAM3: { name: 'Left Corner' }
-  };
-
-  const handleImageUpload = (key, file) => {
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setImages(prev => ({ ...prev, [key]: e.target.result }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const playJumpscareSound = () => {
-    if (!soundEnabled) return;
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const oscillator = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(ctx.destination);
-    
-    oscillator.type = 'sawtooth';
-    oscillator.frequency.value = 80;
-    gainNode.gain.setValueAtTime(0.8, ctx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 2);
-    oscillator.start(ctx.currentTime);
-    oscillator.stop(ctx.currentTime + 2);
-  };
-
-  const playSound = (type) => {
-    if (!soundEnabled) return;
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const oscillator = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(ctx.destination);
-    
-    switch(type) {
-      case 'camera':
-        oscillator.frequency.value = 800;
-        gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-        oscillator.start(ctx.currentTime);
-        oscillator.stop(ctx.currentTime + 0.2);
-        break;
-      case 'door':
-        oscillator.frequency.value = 400;
-        gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-        oscillator.start(ctx.currentTime);
-        oscillator.stop(ctx.currentTime + 0.3);
-        break;
-      case 'light':
-        oscillator.frequency.value = 600;
-        gainNode.gain.setValueAtTime(0.15, ctx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
-        oscillator.start(ctx.currentTime);
-        oscillator.stop(ctx.currentTime + 0.1);
-        break;
-      case 'move':
-        oscillator.frequency.value = 200;
-        gainNode.gain.setValueAtTime(0.15, ctx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-        oscillator.start(ctx.currentTime);
-        oscillator.stop(ctx.currentTime + 0.5);
-        break;
-    }
-  };
-
-  useEffect(() => {
-    if (gameState !== 'playing') return;
-    
-    const interval = setInterval(() => {
-      setPower(prev => {
-        let drain = 0.15;
-        if (currentView === 'camera') drain += 0.25;
-        if (leftDoorClosed) drain += 0.15;
-        if (rightDoorClosed) drain += 0.15;
-        if (leftLightOn) drain += 0.1;
-        if (rightLightOn) drain += 0.1;
-        
-        const newPower = Math.max(0, prev - drain);
-        if (newPower === 0) {
-          setGameState('gameover');
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Night Shift - Mobile</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body, html { margin: 0; padding: 0; background: black; overflow: hidden; height: 100%; }
+        #root { height: 100%; }
+        @keyframes shake {
+            0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1.2); }
+            10% { transform: translate(-20px, 20px) rotate(-5deg) scale(1.3); }
+            20% { transform: translate(20px, -20px) rotate(5deg) scale(1.1); }
+            50% { transform: translate(-15px, 15px) rotate(-4deg) scale(1.3); }
         }
-        return newPower;
-      });
-    }, 1000);
-    
-    return () => clearInterval(interval);
-  }, [gameState, currentView, leftDoorClosed, rightDoorClosed, leftLightOn, rightLightOn]);
+        .animate-shake { animation: shake 0.05s infinite; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
 
-  useEffect(() => {
-    if (gameState !== 'playing') return;
-    
-    const interval = setInterval(() => {
-      setHour(prev => {
-        const newHour = prev + 1;
-        if (newHour >= 6) {
-          setGameState('win');
-        }
-        return newHour;
-      });
-    }, 90000);
-    
-    return () => clearInterval(interval);
-  }, [gameState]);
-
-  useEffect(() => {
-    if (gameState !== 'playing') return;
-    
-    const interval = setInterval(() => {
-      const moveChance = currentView === 'office' ? 0.3 : 0.1;
-      
-      setAnimatronicPositions(prev => {
-        const updated = { ...prev };
-        const characters = ['char1', 'char2', 'char3', 'char4'];
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
         
-        characters.forEach(char => {
-          if (Math.random() < moveChance) {
-            const currentPos = updated[char];
-            
-            if (currentPos === 'CAM5') {
-              if (!leftDoorClosed && currentView === 'office' && Math.random() < 0.6) {
-                triggerJumpscare(char);
-                return;
-              }
-              updated[char] = leftDoorClosed ? 'CAM1' : 'CAM5';
-            } else if (currentPos === 'CAM6') {
-              if (!rightDoorClosed && currentView === 'office' && Math.random() < 0.6) {
-                triggerJumpscare(char);
-                return;
-              }
-              updated[char] = rightDoorClosed ? 'CAM1' : 'CAM6';
-            } else {
-              const possibleMoves = ['CAM1', 'CAM2', 'CAM3', 'CAM4', 'CAM5', 'CAM6'];
-              const validMoves = possibleMoves.filter(cam => cam !== currentPos);
-              updated[char] = validMoves[Math.floor(Math.random() * validMoves.length)];
-              playSound('move');
+        // Simple Icon Components for standalone use
+        const CameraIcon = () => <span style={{fontSize: '20px'}}>📷</span>;
+        const PowerIcon = () => <span style={{fontSize: '18px'}}>⚡</span>;
+        const XIcon = () => <span style={{fontSize: '24px'}}>✕</span>;
+
+        function FNAFGame() {
+            const [gameState, setGameState] = useState('menu');
+            const [currentView, setCurrentView] = useState('office');
+            const [selectedCamera, setSelectedCamera] = useState('CAM1');
+            const [power, setPower] = useState(100);
+            const [hour, setHour] = useState(0);
+            const [leftDoorClosed, setLeftDoorClosed] = useState(false);
+            const [rightDoorClosed, setRightDoorClosed] = useState(false);
+            const [jumpscareCharacter, setJumpscareCharacter] = useState(null);
+
+            // Power Drain Logic
+            useEffect(() => {
+                if (gameState !== 'playing') return;
+                const interval = setInterval(() => {
+                    setPower(prev => {
+                        let drain = 0.2;
+                        if (currentView === 'camera') drain += 0.3;
+                        if (leftDoorClosed) drain += 0.2;
+                        if (rightDoorClosed) drain += 0.2;
+                        const newPower = Math.max(0, prev - drain);
+                        if (newPower === 0) setGameState('gameover');
+                        return newPower;
+                    });
+                }, 1000);
+                return () => clearInterval(interval);
+            }, [gameState, currentView, leftDoorClosed, rightDoorClosed]);
+
+            // Hour Logic
+            useEffect(() => {
+                if (gameState !== 'playing') return;
+                const interval = setInterval(() => {
+                    setHour(prev => {
+                        if (prev + 1 >= 6) setGameState('win');
+                        return prev + 1;
+                    });
+                }, 60000); // 1 minute per hour for testing
+                return () => clearInterval(interval);
+            }, [gameState]);
+
+            if (gameState === 'menu') {
+                return (
+                    <div className="flex flex-col items-center justify-center h-full bg-black text-white p-4">
+                        <h1 className="text-5xl font-bold text-red-700 mb-8 tracking-tighter">NIGHT SHIFT</h1>
+                        <button 
+                            onClick={() => setGameState('playing')}
+                            className="border-2 border-white px-10 py-4 text-2xl hover:bg-white hover:text-black transition"
+                        >
+                            START GAME
+                        </button>
+                    </div>
+                );
             }
-          }
-        });
-        
-        return updated;
-      });
-    }, 6000);
-    
-    return () => clearInterval(interval);
-  }, [gameState, currentView, leftDoorClosed, rightDoorClosed]);
 
-  const triggerJumpscare = (character) => {
-    playJumpscareSound();
-    setJumpscareCharacter(character);
-    setGameState('jumpscare');
-    
-    setTimeout(() => {
-      setShowTryAgain(true);
-    }, 2000);
-  };
-
-  const startGame = () => {
-    setGameState('playing');
-    setPower(100);
-    setHour(0);
-    setCurrentView('office');
-    setLeftDoorClosed(false);
-    setRightDoorClosed(false);
-    setLeftLightOn(false);
-    setRightLightOn(false);
-    setShowTryAgain(false);
-    setJumpscareCharacter(null);
-    setAnimatronicPositions({
-      char1: 'CAM1',
-      char2: 'CAM1',
-      char3: 'CAM3',
-      char4: 'CAM2'
-    });
-  };
-
-  const toggleCamera = () => {
-    if (currentView === 'office') {
-      setCurrentView('camera');
-      playSound('camera');
-    } else {
-      setCurrentView('office');
-      playSound('camera');
-    }
-  };
-
-  const toggleDoor = (side) => {
-    playSound('door');
-    if (side === 'left') {
-      setLeftDoorClosed(!leftDoorClosed);
-    } else {
-      setRightDoorClosed(!rightDoorClosed);
-    }
-  };
-
-  const toggleLight = (side) => {
-    playSound('light');
-    if (side === 'left') {
-      setLeftLightOn(!leftLightOn);
-    } else {
-      setRightLightOn(!rightLightOn);
-    }
-  };
-
-  const getOfficeImage = () => {
-    if (leftLightOn && rightLightOn && images.officeBoth) return images.officeBoth;
-    if (leftLightOn && images.officeLeft) return images.officeLeft;
-    if (rightLightOn && images.officeRight) return images.officeRight;
-    return images.officeBoth || images.officeLeft || images.officeRight;
-  };
-
-  const getJumpscareImage = () => {
-    switch(jumpscareCharacter) {
-      case 'char1': return images.jumpscare1;
-      case 'char2': return images.jumpscare2;
-      case 'char3': return images.jumpscare3;
-      case 'char4': return images.jumpscare4;
-      default: return images.jumpscare1;
-    }
-  };
-
-  // Upload screen
-  if (gameState === 'upload') {
-    return (
-      <div className="w-full min-h-screen bg-gradient-to-b from-gray-900 to-black p-6 overflow-y-auto">
-        <div className="max-w-6xl mx-auto">
-          <h1 className="text-5xl font-bold text-red-600 mb-2 text-center">NIGHT SHIFT</h1>
-          <p className="text-gray-400 mb-8 text-center text-lg">Upload Your Images (Drag & Drop)</p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Office Images */}
-            <div className="bg-gray-800 rounded-lg p-4">
-              <h3 className="text-white font-bold mb-2">Office - Left Light</h3>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleImageUpload('officeLeft', e.target.files[0])}
-                className="hidden"
-                id="officeLeft"
-              />
-              <label htmlFor="officeLeft" className="cursor-pointer block">
-                {images.officeLeft ? (
-                  <img src={images.officeLeft} alt="Office Left" className="w-full h-32 object-cover rounded mb-2" />
-                ) : (
-                  <div className="w-full h-32 bg-gray-700 rounded mb-2 flex items-center justify-center">
-                    <Upload className="text-gray-500" size={32} />
-                  </div>
-                )}
-                <p className="text-gray-400 text-sm text-center">Click to upload</p>
-              </label>
-            </div>
-
-            <div className="bg-gray-800 rounded-lg p-4">
-              <h3 className="text-white font-bold mb-2">Office - Right Light</h3>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleImageUpload('officeRight', e.target.files[0])}
-                className="hidden"
-                id="officeRight"
-              />
-              <label htmlFor="officeRight" className="cursor-pointer block">
-                {images.officeRight ? (
-                  <img src={images.officeRight} alt="Office Right" className="w-full h-32 object-cover rounded mb-2" />
-                ) : (
-                  <div className="w-full h-32 bg-gray-700 rounded mb-2 flex items-center justify-center">
-                    <Upload className="text-gray-500" size={32} />
-                  </div>
-                )}
-                <p className="text-gray-400 text-sm text-center">Click to upload</p>
-              </label>
-            </div>
-
-            <div className="bg-gray-800 rounded-lg p-4">
-              <h3 className="text-white font-bold mb-2">Office - Both Lights</h3>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleImageUpload('officeBoth', e.target.files[0])}
-                className="hidden"
-                id="officeBoth"
-              />
-              <label htmlFor="officeBoth" className="cursor-pointer block">
-                {images.officeBoth ? (
-                  <img src={images.officeBoth} alt="Office Both" className="w-full h-32 object-cover rounded mb-2" />
-                ) : (
-                  <div className="w-full h-32 bg-gray-700 rounded mb-2 flex items-center justify-center">
-                    <Upload className="text-gray-500" size={32} />
-                  </div>
-                )}
-                <p className="text-gray-400 text-sm text-center">Click to upload</p>
-              </label>
-            </div>
-
-            {/* Jumpscare Images */}
-            {[1, 2, 3, 4].map(num => (
-              <div key={num} className="bg-gray-800 rounded-lg p-4">
-                <h3 className="text-white font-bold mb-2">Jumpscare {num}</h3>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleImageUpload(`jumpscare${num}`, e.target.files[0])}
-                  className="hidden"
-                  id={`jumpscare${num}`}
-                />
-                <label htmlFor={`jumpscare${num}`} className="cursor-pointer block">
-                  {images[`jumpscare${num}`] ? (
-                    <img src={images[`jumpscare${num}`]} alt={`Jumpscare ${num}`} className="w-full h-32 object-cover rounded mb-2" />
-                  ) : (
-                    <div className="w-full h-32 bg-gray-700 rounded mb-2 flex items-center justify-center">
-                      <Upload className="text-gray-500" size={32} />
+            if (gameState === 'gameover') {
+                return (
+                    <div className="flex flex-col items-center justify-center h-full bg-black text-red-600">
+                        <h1 className="text-6xl font-bold mb-4">POWER OUT</h1>
+                        <button onClick={() => location.reload()} className="text-white underline">Restart</button>
                     </div>
-                  )}
-                  <p className="text-gray-400 text-sm text-center">Click to upload</p>
-                </label>
-              </div>
-            ))}
+                );
+            }
 
-            {/* Camera Images */}
-            {[1, 2, 3].map(num => (
-              <div key={num} className="bg-gray-800 rounded-lg p-4">
-                <h3 className="text-white font-bold mb-2">CAM{num} - {cameras[`CAM${num}`].name} (Empty)</h3>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleImageUpload(`cam${num}`, e.target.files[0])}
-                  className="hidden"
-                  id={`cam${num}`}
-                />
-                <label htmlFor={`cam${num}`} className="cursor-pointer block">
-                  {images[`cam${num}`] ? (
-                    <img src={images[`cam${num}`]} alt={`Camera ${num}`} className="w-full h-32 object-cover rounded mb-2" />
-                  ) : (
-                    <div className="w-full h-32 bg-gray-700 rounded mb-2 flex items-center justify-center">
-                      <Upload className="text-gray-500" size={32} />
+            if (gameState === 'win') {
+                return (
+                    <div className="flex flex-col items-center justify-center h-full bg-black text-green-500">
+                        <h1 className="text-8xl font-bold">6 AM</h1>
+                        <p className="text-white mt-4">You survived!</p>
+                        <button onClick={() => location.reload()} className="text-white underline mt-8">Main Menu</button>
                     </div>
-                  )}
-                  <p className="text-gray-400 text-sm text-center">Click to upload</p>
-                </label>
-              </div>
-            ))}
+                );
+            }
 
-            {/* Animatronic in Camera Images */}
-            <div className="col-span-full">
-              <h2 className="text-2xl font-bold text-red-500 mb-4 mt-6">Animatronics in Cameras</h2>
-            </div>
-
-            <div className="bg-gray-700 rounded-lg p-4">
-              <h3 className="text-xl font-bold text-yellow-400 mb-4">Animatronic 1 (in Left Hall)</h3>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleImageUpload('char1_cam1', e.target.files[0])}
-                className="hidden"
-                id="char1_cam1"
-              />
-              <label htmlFor="char1_cam1" className="cursor-pointer block">
-                {images.char1_cam1 ? (
-                  <img src={images.char1_cam1} alt="Char 1 CAM1" className="w-full h-40 object-cover rounded mb-2" />
-                ) : (
-                  <div className="w-full h-40 bg-gray-800 rounded mb-2 flex items-center justify-center">
-                    <Upload className="text-gray-500" size={32} />
-                  </div>
-                )}
-                <p className="text-gray-400 text-sm text-center">Click to upload</p>
-              </label>
-            </div>
-
-            <div className="bg-gray-700 rounded-lg p-4">
-              <h3 className="text-xl font-bold text-yellow-400 mb-4">Animatronic 2 (in Left Hall)</h3>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleImageUpload('char2_cam1', e.target.files[0])}
-                className="hidden"
-                id="char2_cam1"
-              />
-              <label htmlFor="char2_cam1" className="cursor-pointer block">
-                {images.char2_cam1 ? (
-                  <img src={images.char2_cam1} alt="Char 2 CAM1" className="w-full h-40 object-cover rounded mb-2" />
-                ) : (
-                  <div className="w-full h-40 bg-gray-800 rounded mb-2 flex items-center justify-center">
-                    <Upload className="text-gray-500" size={32} />
-                  </div>
-                )}
-                <p className="text-gray-400 text-sm text-center">Click to upload</p>
-              </label>
-            </div>
-
-            <div className="bg-gray-700 rounded-lg p-4">
-              <h3 className="text-xl font-bold text-yellow-400 mb-4">Animatronic 3 (in Left Corner)</h3>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleImageUpload('char3_cam3', e.target.files[0])}
-                className="hidden"
-                id="char3_cam3"
-              />
-              <label htmlFor="char3_cam3" className="cursor-pointer block">
-                {images.char3_cam3 ? (
-                  <img src={images.char3_cam3} alt="Char 3 CAM3" className="w-full h-40 object-cover rounded mb-2" />
-                ) : (
-                  <div className="w-full h-40 bg-gray-800 rounded mb-2 flex items-center justify-center">
-                    <Upload className="text-gray-500" size={32} />
-                  </div>
-                )}
-                <p className="text-gray-400 text-sm text-center">Click to upload</p>
-              </label>
-            </div>
-
-            <div className="bg-gray-700 rounded-lg p-4">
-              <h3 className="text-xl font-bold text-yellow-400 mb-4">Animatronic 4 (Doesn't Show in Cameras)</h3>
-              <div className="w-full h-40 bg-gray-800 rounded flex items-center justify-center">
-                <p className="text-gray-500 text-center">This character is invisible<br/>and never appears in cameras!</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8 text-center">
-            <button
-              onClick={() => setGameState('menu')}
-              className="bg-red-600 hover:bg-red-700 text-white px-12 py-4 rounded-lg text-2xl font-bold"
-            >
-              START GAME →
-            </button>
-            <p className="text-gray-500 mt-4">You can skip images - placeholders will be used</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Menu
-  if (gameState === 'menu') {
-    return (
-      <div className="w-full h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-6xl font-bold text-red-600 mb-4 animate-pulse">
-            NIGHT SHIFT
-          </h1>
-          <p className="text-gray-400 mb-8 text-xl">Survive Until 6 AM</p>
-          <div className="space-y-4">
-            <button
-              onClick={startGame}
-              className="block mx-auto bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded text-2xl font-bold"
-            >
-              START NIGHT
-            </button>
-            <button
-              onClick={() => setGameState('upload')}
-              className="block mx-auto bg-gray-700 hover:bg-gray-600 text-white px-8 py-3 rounded text-lg"
-            >
-              Change Images
-            </button>
-          </div>
-          <div className="mt-8">
-            <button
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              className="text-gray-400 hover:text-white"
-            >
-              {soundEnabled ? <Volume2 size={32} /> : <VolumeX size={32} />}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Jumpscare
-  if (gameState === 'jumpscare') {
-    const jumpImg = getJumpscareImage();
-    return (
-      <div className="w-full h-screen bg-black flex items-center justify-center relative overflow-hidden">
-        {jumpImg ? (
-          <img 
-            src={jumpImg}
-            alt="Jumpscare" 
-            className="absolute inset-0 w-full h-full object-contain animate-pulse"
-            style={{
-              filter: 'blur(2px)',
-              imageRendering: 'pixelated',
-              animation: 'shake 0.1s infinite'
-            }}
-          />
-        ) : (
-          <div className="text-9xl animate-pulse">💀</div>
-        )}
-        {showTryAgain && (
-          <>
-            <div 
-              className="absolute inset-0 bg-red-600"
-              style={{ animation: 'fadeIn 1s ease-in' }}
-            />
-            <div className="relative z-20 text-center">
-              <h1 className="text-6xl font-bold text-white mb-8">
-                TRY AGAIN
-              </h1>
-              <button
-                onClick={() => {
-                  setShowTryAgain(false);
-                  setGameState('menu');
-                }}
-                className="bg-white text-black px-8 py-4 rounded text-xl font-bold hover:bg-gray-200"
-              >
-                Back to Menu
-              </button>
-            </div>
-          </>
-        )}
-        <style>{`
-          @keyframes shake {
-            0%, 100% { transform: translate(0, 0) rotate(0deg); }
-            25% { transform: translate(-5px, 5px) rotate(-2deg); }
-            50% { transform: translate(5px, -5px) rotate(2deg); }
-            75% { transform: translate(-5px, -5px) rotate(-1deg); }
-          }
-          @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-          }
-        `}</style>
-      </div>
-    );
-  }
-
-  // Game over
-  if (gameState === 'gameover') {
-    return (
-      <div className="w-full h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-5xl font-bold text-red-600 mb-4">POWER OUT</h1>
-          <p className="text-gray-400 mb-8 text-xl">You ran out of power...</p>
-          <button
-            onClick={() => setGameState('menu')}
-            className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded text-xl"
-          >
-            Main Menu
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Win
-  if (gameState === 'win') {
-    return (
-      <div className="w-full h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-5xl font-bold text-green-500 mb-4">6 AM</h1>
-          <p className="text-gray-400 mb-8 text-xl">You survived the night!</p>
-          <button
-            onClick={() => setGameState('menu')}
-            className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded text-xl"
-          >
-            Main Menu
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Office view
-  if (currentView === 'office') {
-    const officeImg = getOfficeImage();
-    return (
-      <div className="w-full h-screen bg-black relative overflow-hidden">
-        {officeImg ? (
-          <img 
-            src={officeImg}
-            alt="Office" 
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-b from-gray-800 to-black" />
-        )}
-
-        <div className="absolute top-4 left-4 text-white z-10">
-          <div className="bg-black bg-opacity-75 p-3 rounded">
-            <div className="flex items-center gap-2 mb-2">
-              <Power size={20} />
-              <span className="font-mono text-xl">{Math.floor(power)}%</span>
-            </div>
-            <div className="text-sm text-gray-400">
-              {hour} AM - {6 - hour} hours left
-            </div>
-          </div>
-        </div>
-
-        <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 space-y-4">
-          <button
-            onClick={() => toggleLight('left')}
-            className={`px-4 py-3 rounded font-bold flex items-center gap-2 ${
-              leftLightOn ? 'bg-yellow-500 text-black' : 'bg-gray-700 text-white'
-            }`}
-          >
-            <Lightbulb size={20} />
-            Light
-          </button>
-          <button
-            onClick={() => toggleDoor('left')}
-            className={`px-4 py-3 rounded font-bold ${
-              leftDoorClosed ? 'bg-red-600 text-white' : 'bg-green-600 text-white'
-            }`}
-          >
-            Door<br/>{leftDoorClosed ? 'CLOSED' : 'OPEN'}
-          </button>
-        </div>
-
-        <div className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 space-y-4">
-          <button
-            onClick={() => toggleLight('right')}
-            className={`px-4 py-3 rounded font-bold flex items-center gap-2 ${
-              rightLightOn ? 'bg-yellow-500 text-black' : 'bg-gray-700 text-white'
-            }`}
-          >
-            <Lightbulb size={20} />
-            Light
-          </button>
-          <button
-            onClick={() => toggleDoor('right')}
-            className={`px-4 py-3 rounded font-bold ${
-              rightDoorClosed ? 'bg-red-600 text-white' : 'bg-green-600 text-white'
-            }`}
-          >
-            Door<br/>{rightDoorClosed ? 'CLOSED' : 'OPEN'}
-          </button>
-        </div>
-
-        <button
-          onClick={toggleCamera}
-          className="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-lg text-xl font-bold flex items-center gap-2 z-10"
-        >
-          <Camera size={24} />
-          CAMERAS
-        </button>
-      </div>
-    );
-  }
-
-  // Camera view
-  const animatronicsInView = Object.entries(animatronicPositions)
-    .filter(([char, pos]) => pos === selectedCamera)
-    .map(([char]) => char);
-
-  return (
-    <div className="w-full h-screen bg-black relative">
-      <div className="absolute inset-0 flex items-center justify-center p-8">
-        <div className="w-full max-w-4xl">
-          <div className="bg-gray-900 border-4 border-green-500 rounded-lg overflow-hidden aspect-video relative">
-            {/* Base camera background */}
-            {images[`cam${selectedCamera.slice(-1)}`] ? (
-              <img 
-                src={images[`cam${selectedCamera.slice(-1)}`]}
-                alt={`Camera ${selectedCamera}`}
-                className="absolute inset-0 w-full h-full object-cover"
-              />
-            ) : (
-              <div className="absolute inset-0 bg-gray-800" />
-            )}
-
-            {/* Show animatronic image if present */}
-            {animatronicsInView.length > 0 && animatronicsInView.map(char => {
-              const animImage = images[`${char}_${selectedCamera.toLowerCase()}`];
-              return animImage ? (
-                <img 
-                  key={char}
-                  src={animImage}
-                  alt={`${char} in ${selectedCamera}`}
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-              ) : null;
-            })}
-
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-green-500 to-transparent opacity-10 animate-pulse pointer-events-none" />
-            
-            <div className="absolute top-4 left-4 text-green-400 font-mono z-20">
-              {selectedCamera}
-            </div>
-            <div className="absolute top-4 right-4 text-green-400 font-mono animate-pulse z-20">
-              REC ●
-            </div>
-            
-            {animatronicsInView.length > 0 && (
-              <div className="absolute bottom-4 left-4 right-4 text-center z-20">
-                <p className="text-red-500 text-xl font-bold animate-pulse">
-                  ⚠️ MOVEMENT DETECTED
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="absolute bottom-8 left-8 right-8">
-        <div className="grid grid-cols-3 gap-4">
-          {Object.keys(cameras).map(cam => {
-            const count = Object.values(animatronicPositions).filter(pos => pos === cam).length;
             return (
-              <button
-                key={cam}
-                onClick={() => {
-                  setSelectedCamera(cam);
-                  playSound('camera');
-                }}
-                className={`p-4 rounded ${
-                  selectedCamera === cam
-                    ? 'bg-green-600 text-white'
-                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                } ${count > 0 ? 'border-2 border-red-500' : ''}`}
-              >
-                <div className="font-bold">{cam}</div>
-                {count > 0 && <div className="text-xs text-red-400 mt-1">{count} here</div>}
-              </button>
+                <div className="relative h-full w-full bg-slate-900 text-white overflow-hidden">
+                    {/* Office View */}
+                    {currentView === 'office' ? (
+                        <div className="h-full w-full flex items-center justify-center relative bg-neutral-900">
+                            <div className="absolute top-4 left-4 bg-black/50 p-2 border">
+                                <p>Power: {Math.floor(power)}%</p>
+                                <p>Time: {hour} AM</p>
+                            </div>
+
+                            <div className="flex gap-20">
+                                <button onClick={() => setLeftDoorClosed(!leftDoorClosed)} className={`p-6 border-2 ${leftDoorClosed ? 'bg-red-600' : ''}`}>
+                                    LEFT DOOR
+                                </button>
+                                <button onClick={() => setRightDoorClosed(!rightDoorClosed)} className={`p-6 border-2 ${rightDoorClosed ? 'bg-red-600' : ''}`}>
+                                    RIGHT DOOR
+                                </button>
+                            </div>
+
+                            <button 
+                                onClick={() => setCurrentView('camera')}
+                                className="absolute bottom-10 px-12 py-4 border-2 bg-black/80 flex items-center gap-2"
+                            >
+                                <CameraIcon /> CAMERAS
+                            </button>
+                        </div>
+                    ) : (
+                        /* Camera View */
+                        <div className="h-full w-full bg-black flex flex-col p-4">
+                            <div className="flex justify-between mb-4">
+                                <span>{selectedCamera} - ACTIVE</span>
+                                <button onClick={() => setCurrentView('office')} className="bg-red-600 px-4">CLOSE</button>
+                            </div>
+                            <div className="flex-1 border-2 border-green-500 relative flex items-center justify-center text-green-500">
+                                <div className="absolute top-2 left-2 animate-pulse">● REC</div>
+                                <h2 className="text-4xl opacity-20">{selectedCamera}</h2>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 mt-4">
+                                {['CAM1', 'CAM2', 'CAM3'].map(cam => (
+                                    <button 
+                                        key={cam} 
+                                        onClick={() => setSelectedCamera(cam)}
+                                        className={`p-4 border ${selectedCamera === cam ? 'bg-white text-black' : ''}`}
+                                    >
+                                        {cam}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
             );
-          })}
-        </div>
-      </div>
+        }
 
-      <button
-        onClick={toggleCamera}
-        className="absolute top-4 right-4 bg-red-600 hover:bg-red-700 text-white p-3 rounded-full"
-      >
-        <X size={24} />
-      </button>
-
-      <div className="absolute top-4 left-4 text-white">
-        <div className="bg-black bg-opacity-75 p-3 rounded">
-          <div className="flex items-center gap-2 mb-2">
-            <Power size={20} />
-            <span className="font-mono text-xl">{Math.floor(power)}%</span>
-          </div>
-          <div className="text-sm text-gray-400">{hour} AM</div>
-        </div>
-      </div>
-    </div>
-  );
-}
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<FNAFGame />);
+    </script>
+</body>
+</html>
