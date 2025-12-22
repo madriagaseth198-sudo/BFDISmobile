@@ -3,317 +3,212 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BFDI Night Shift - Fixed</title>
+    <title>BFDI's Night Shift</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #111; overflow: hidden; font-family: 'Courier New', monospace; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: black; overflow: hidden; font-family: 'Courier New', monospace; }
 
-        /* --- LAYERS --- */
-        #game-container { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+        /* Layers */
+        #game-container { position: relative; width: 100vw; height: 100vh; }
+        #office { width: 100%; height: 100%; background-size: cover; background-position: center; transition: filter 0.1s; }
+        
+        /* GUI Overlay for Noise */
+        #noise-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 900; pointer-events: none; opacity: 0.15; mix-blend-mode: screen; }
 
-        /* 1. Office Layer */
-        #office { 
-            width: 100%; height: 100%; 
-            background-color: #222; /* Fallback color if image missing */
-            background-size: cover; background-position: center; 
-            transition: filter 0.1s;
+        /* Time Display */
+        #time-display { position: absolute; top: 15px; left: 20px; color: white; font-size: 1.5rem; font-weight: bold; text-shadow: 2px 2px black; z-index: 30; }
+
+        /* Buttons */
+        .btn {
+            position: absolute; background: rgba(0,0,0,0.4); border: 2px solid white; color: white;
+            padding: 18px; font-weight: bold; text-transform: uppercase; border-radius: 6px; z-index: 20; pointer-events: auto;
         }
+        .btn:active { background: rgba(255,255,255,0.3); }
 
-        /* 2. STATIC NOISE OVERLAY */
-        #noise-canvas {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 999; /* Very high up */
-            pointer-events: none; /* Let clicks pass through */
-            opacity: 0.1;
-            mix-blend-mode: screen;
-        }
+        /* Positioning */
+        #btn-l { left: 15px; bottom: 45%; }
+        #btn-r { right: 15px; bottom: 45%; }
+        #btn-cam { bottom: 15px; left: 50%; transform: translateX(-50%); width: 180px; text-align: center; }
+        #btn-v { bottom: 15px; right: 15px; font-size: 0.7rem; }
+        #btn-pause { top: 15px; right: 15px; border-width: 1px; font-size: 0.7rem; padding: 8px; }
 
-        /* 3. Office UI (Lights/Buttons) */
-        .office-controls { position: absolute; width: 100%; height: 100%; top: 0; left: 0; z-index: 20; pointer-events: none; }
-        .btn-office { 
-            pointer-events: auto; position: absolute; 
-            background: rgba(0,0,0,0.5); border: 2px solid white; color: white;
-            padding: 20px; font-weight: bold; text-transform: uppercase; border-radius: 8px;
-            font-size: 1rem;
-        }
-        .btn-office:active { background: rgba(255,255,255,0.3); }
-
-        /* Positions */
-        #btn-light-l { left: 20px; bottom: 45%; }
-        #btn-light-r { right: 20px; bottom: 45%; }
-        #btn-cams { bottom: 20px; left: 50%; transform: translateX(-50%); width: 220px; height: 60px; }
-        #btn-vent { bottom: 20px; right: 20px; font-size: 0.8rem; height: 60px; }
-        #btn-menu { top: 20px; right: 20px; padding: 10px; font-size: 0.8rem; }
-
-        /* 4. Monitor Overlay */
-        #monitor-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95);
-            z-index: 100;
-            display: none; /* Hidden by default */
+        /* Monitor Overlay */
+        #monitor {
+            position: absolute; top:0; left:0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 1000; display: none;
             flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.3s; opacity: 0;
         }
-        #monitor-overlay.active { display: flex; }
+        #monitor.active { display: flex; opacity: 1; }
 
-        /* Camera Viewport */
-        #cam-viewport {
-            width: 80vw; height: 60vh;
-            border: 4px solid white;
-            background-color: #333; /* Dark gray fallback */
-            background-size: cover; background-position: center;
-            position: relative;
-            margin-bottom: 20px;
-        }
+        #viewport { width: 85vw; height: 65vh; border: 3px solid white; background-size: cover; background-position: center; position: relative; }
+        #cam-label { position: absolute; top:10px; left:10px; background: black; border: 1px solid white; padding: 5px; color: white; }
+        #exit-mon { position: absolute; top: 10px; right: 10px; color: red; border: 2px solid red; background: black; padding: 10px; }
 
-        #cam-label {
-            position: absolute; top: 10px; left: 10px;
-            background: black; color: white; padding: 5px 10px;
-            border: 1px solid white;
-        }
+        .cam-row { margin-top: 15px; display: flex; gap: 10px; }
+        .cam-btn { padding: 12px; border: 1px solid #777; background: black; color: white; font-size: 0.8rem; }
+        .selected { border-color: #0f0; color: #0f0; }
 
-        /* Camera Buttons */
-        .cam-buttons-row { display: flex; gap: 10px; }
-        .btn-cam {
-            padding: 15px; border: 2px solid #555; background: #000; color: #aaa;
-            font-weight: bold; text-transform: uppercase;
-        }
-        .btn-cam.selected { border-color: #0f0; color: #0f0; }
+        /* Win/Jumpscare Layers */
+        #js-layer, #win-layer { display: none; position: absolute; top:0; left:0; width:100%; height:100%; z-index: 5000; background: black; }
+        #js-img { width: 140%; height: 140%; position: absolute; top: -20%; left: -20%; object-fit: contain; }
+        #win-content { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: white; text-align: center; }
+        
+        .shake { animation: s 0.08s steps(2) infinite; }
+        @keyframes s { 0%{transform:translate(20px,20px)} 100%{transform:translate(-20px,-20px)} }
 
-        #btn-exit-cam {
-            position: absolute; top: 20px; right: 20px;
-            border: 2px solid red; color: red; background: black;
-            padding: 10px 30px; font-size: 1.2rem;
-        }
-
-        /* 5. Jumpscare Layer */
-        #jumpscare-layer { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2000; background: black; }
-        #jumpscare-img { width: 100%; height: 100%; object-fit: contain; }
-        .shake { animation: shake 0.1s steps(2) infinite; }
-        @keyframes shake { 0% { transform: translate(5px, 5px); } 100% { transform: translate(-5px, -5px); } }
-
-        /* Main Menu */
-        #main-menu { position: absolute; top:0; left:0; width: 100%; height: 100%; background: #000; z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        h1 { color: red; font-size: 2.5rem; text-shadow: 2px 2px #333; }
-
-        /* Red Blink Animation */
-        .red-blink { animation: blinkRed 0.5s infinite; border-color: red !important; color: red !important; }
-        @keyframes blinkRed { 50% { opacity: 0.5; } }
+        /* Menu */
+        #menu { position: absolute; top:0; left:0; width: 100%; height: 100%; background: #000; z-index: 6000; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .red { color: red; margin: 0; }
+        .blink { animation: bl 0.6s infinite; border-color: red !important; color: red !important; }
+        @keyframes bl { 50% { opacity: 0.4; } }
     </style>
 </head>
 <body>
 
+    <canvas id="noise-canvas"></canvas>
+
+    <div id="menu">
+        <h1 class="red" style="font-size: 2.5rem;">BFDI's Night Shift</h1>
+        <h2 class="red" style="font-size: 1rem;">Five Nights at beefydies</h2>
+        <br><br>
+        <button class="btn" style="position:static" onclick="start()">PLAY</button>
+        <p id="load" style="color:white; display:none; margin-top:20px;">LOADING CAMERA FEEDS...</p>
+    </div>
+
     <div id="game-container">
-        
-        <canvas id="noise-canvas"></canvas>
-
-        <div id="main-menu">
-            <h1>BFDI's Night Shift</h1>
-            <h2 style="color:red; font-size: 1rem;">Five Nights at beefydies</h2>
-            <br><br>
-            <button class="btn-office" style="position:static; margin-top:20px;" onclick="startGame()">PLAY GAME</button>
-            <p id="loading-txt" style="color:white; display:none; margin-top:20px;">LOADING ASSETS...</p>
-        </div>
-
+        <div id="time-display">12 AM</div>
         <div id="office"></div>
+        <button id="btn-pause" class="btn" onclick="location.reload()">MENU</button>
+        <button id="btn-l" class="btn" ontouchstart="lt('l')" ontouchend="lt('o')">LIGHT L</button>
+        <button id="btn-r" class="btn" ontouchstart="lt('r')" ontouchend="lt('o')">LIGHT R</button>
+        <button id="btn-cam" class="btn" onclick="openM()">CAMERAS</button>
+        <button id="btn-v" class="btn" onclick="rv()">RESET VENT</button>
 
-        <div class="office-controls">
-            <button id="btn-menu" class="btn-office" onclick="location.reload()">MENU</button>
-            <button id="btn-light-l" class="btn-office" ontouchstart="light('left')" ontouchend="light('off')">LIGHT L</button>
-            <button id="btn-light-r" class="btn-office" ontouchstart="light('right')" ontouchend="light('off')">LIGHT R</button>
-            <button id="btn-cams" class="btn-office" onclick="openMonitor()">CAMERAS</button>
-            <button id="btn-vent" class="btn-office" onclick="resetVent()">RESET VENT</button>
-        </div>
-
-        <div id="monitor-overlay">
-            <button id="btn-exit-cam" onclick="closeMonitor()">EXIT</button>
-            
-            <div id="cam-viewport">
-                <div id="cam-label">CAM SYSTEM</div>
-            </div>
-
-            <div class="cam-buttons-row">
-                <button class="btn-cam" onclick="switchCam('west')">West Hall</button>
-                <button class="btn-cam" onclick="switchCam('corner')">L. Corner</button>
-                <button class="btn-cam" onclick="switchCam('east')">East Hall</button>
+        <div id="monitor">
+            <button id="exit-mon" onclick="closeM()">EXIT MONITOR</button>
+            <div id="viewport"><div id="cam-label">CAM</div></div>
+            <div class="cam-row">
+                <button class="cam-btn" onclick="sw('w')">West Hall</button>
+                <button class="cam-btn" onclick="sw('c')">L. Corner</button>
+                <button class="cam-btn" onclick="sw('e')">East Hall</button>
             </div>
         </div>
 
-        <div id="jumpscare-layer">
-            <img id="jumpscare-img" src="">
+        <div id="js-layer"><img id="js-img" src="" class="shake"></div>
+        <div id="win-layer">
+            <div id="win-content">
+                <h1 style="font-size: 5rem; color: #0f0;">5:59</h1>
+                <h1 style="font-size: 8rem; color: #0f0;">6 AM</h1>
+                <p style="font-size: 1.5rem;">Great Job! You survived the night.</p>
+                <button class="btn" style="position:static; margin-top:20px;" onclick="location.reload()">MAIN MENU</button>
+            </div>
         </div>
     </div>
 
-    <audio id="scream" src="five-nights-at-freddys-full-scream-sound_2.mp3"></audio>
+    <audio id="sc" src="five-nights-at-freddys-full-scream-sound_2.mp3"></audio>
 
     <script>
-        // --- IMAGE PATHS (Check these!) ---
-        const officeMain = 'Untitled32_20251221222716.png';
-        const officeL = 'Untitled32_20251221221743.png';
-        const officeR = 'Untitled32_20251221221738.png';
-
-        const camAssets = {
-            westEmpty: 'WestHallNoCamera.webp',
-            westFirey: 'Untitled31_20251221220901.png',
-            westLeafy: 'Untitled31_20251221220956.png',
-            cornerEmpty: 'Cam2B.webp',
-            cornerGelatin: 'Untitled31_20251221221402.png',
-            eastEmpty: 'EastHallNoCamera.webp'
+        const urls = {
+            off: 'https://img.sanishtech.com/u/1bd9cdabc392ccd45cf44ed4e71e190e.png',
+            offL: 'https://img.sanishtech.com/u/ab331bacb0efede06a458b12a2c7069d.png',
+            offR: 'https://img.sanishtech.com/u/2482cef9496b3b79ec63fe5658b729c3.png',
+            wE: 'https://img.sanishtech.com/u/1a88fb87009e264607856e4d084ce2ac.png',
+            wF: 'https://img.sanishtech.com/u/790120301d63d6ba0d06edf3926f0fc8.png',
+            wL: 'https://img.sanishtech.com/u/1491c1ef0807f535661c3607d819c1f8.png',
+            cE: 'https://img.sanishtech.com/u/12bc819aaae99daf4c5b28486e2224ef.png',
+            cG: 'https://img.sanishtech.com/u/7c814709433df313776004af8ad71350.png',
+            eE: 'https://img.sanishtech.com/u/63b6a58856dac190eb88c695bc35b001.png',
+            jsF: 'https://img.sanishtech.com/u/a2ee57a87f0551b333dd6fc2caa2249d.png',
+            jsL: 'https://img.sanishtech.com/u/f61807b6a324f38b5fb2ea741b22f2be.png',
+            jsG: 'https://img.sanishtech.com/u/9b4aae19f2eb5a3f40bf116c2413c9aa.png',
+            jsFl: 'https://img.sanishtech.com/u/99149ed62a0c1c16c0aab97efd269bf3.png'
         };
 
-        const jumpscares = {
-            leafy: 'Untitled32_20251221223454.png',
-            gelatin: 'Untitled32_20251221223705.png',
-            flower: 'Untitled32_20251221223956.png',
-            firey: 'Untitled32_20251221223315.png'
-        };
+        let active = false, mon = false, vt = 25, cur = 'w', hour = 0;
+        let wCh = Math.random() > 0.5 ? 'f' : 'l', cCh = 'g';
 
-        // --- STATE ---
-        let gameActive = false;
-        let monitorOpen = false;
-        let ventTimer = 25;
-        let westChar = Math.random() > 0.5 ? 'firey' : 'leafy';
-        let cornerChar = 'gelatin';
-
-        // --- START GAME ---
-        function startGame() {
-            document.getElementById('loading-txt').style.display = 'block';
-            
-            // 6 second load
+        function start() {
+            document.getElementById('load').style.display = 'block';
             setTimeout(() => {
-                document.getElementById('main-menu').style.display = 'none';
-                gameActive = true;
-                
-                // Initialize Office BG
-                document.getElementById('office').style.backgroundImage = `url('${officeMain}')`;
-                
-                startNoise();
-                startVentSystem();
-                startTimers();
+                document.getElementById('menu').style.display = 'none';
+                active = true;
+                document.getElementById('office').style.backgroundImage = `url('${urls.off}')`;
+                noise(); vLoop(); aiLoop(); clockLoop();
             }, 6000);
         }
 
-        // --- OFFICE ---
-        function light(side) {
-            if(monitorOpen) return;
-            const el = document.getElementById('office');
-            if(side === 'left') el.style.backgroundImage = `url('${officeL}')`;
-            else if(side === 'right') el.style.backgroundImage = `url('${officeR}')`;
-            else el.style.backgroundImage = `url('${officeMain}')`;
-        }
-
-        // --- CAMS ---
-        function openMonitor() {
-            if(!gameActive) return;
-            monitorOpen = true;
-            document.getElementById('monitor-overlay').classList.add('active');
-            // Default to West Hall
-            switchCam('west');
-        }
-
-        function closeMonitor() {
-            monitorOpen = false;
-            document.getElementById('monitor-overlay').classList.remove('active');
-            checkMovement(); // 5s delay check
-        }
-
-        function switchCam(cam) {
-            const view = document.getElementById('cam-viewport');
-            const lbl = document.getElementById('cam-label');
-            let img = '';
-
-            if(cam === 'west') {
-                lbl.innerText = "West Hall";
-                if(westChar === 'firey') img = camAssets.westFirey;
-                else if(westChar === 'leafy') img = camAssets.westLeafy;
-                else img = camAssets.westEmpty;
-            } else if(cam === 'corner') {
-                lbl.innerText = "Left Corner";
-                img = (cornerChar === 'gelatin') ? camAssets.cornerGelatin : camAssets.cornerEmpty;
-            } else {
-                lbl.innerText = "East Hall";
-                img = camAssets.eastEmpty;
-            }
-
-            view.style.backgroundImage = `url('${img}')`;
-        }
-
-        // --- MECHANICS ---
-        function resetVent() {
-            ventTimer = 25;
-            document.getElementById('btn-vent').classList.remove('red-blink');
-            document.getElementById('btn-cams').classList.remove('red-blink');
-            document.getElementById('office').style.filter = "brightness(1)";
-        }
-
-        function startVentSystem() {
+        function clockLoop() {
+            // One "Hour" lasts 60 seconds
             setInterval(() => {
-                if(!gameActive) return;
-                ventTimer--;
-                if(ventTimer <= 10) {
-                    document.getElementById('btn-vent').classList.add('red-blink');
-                    document.getElementById('btn-cams').classList.add('red-blink');
-                }
-                if(ventTimer <= 0) {
-                    document.getElementById('office').style.filter = "brightness(0)";
-                }
+                if(!active) return;
+                hour++;
+                if(hour >= 6) win();
+                else document.getElementById('time-display').innerText = hour + " AM";
+            }, 60000);
+        }
+
+        function win() {
+            active = false;
+            document.getElementById('win-layer').style.display = 'block';
+        }
+
+        function lt(s) {
+            if(mon) return;
+            let bg = urls.off;
+            if(s==='l') bg = urls.offL;
+            if(s==='r') bg = urls.offR;
+            document.getElementById('office').style.backgroundImage = `url('${bg}')`;
+        }
+
+        function openM() { if(!active) return; mon = true; document.getElementById('monitor').classList.add('active'); sw(cur); }
+        function closeM() { 
+            mon = false; document.getElementById('monitor').classList.remove('active'); 
+            if(Math.random() < 0.45) {
+                let atk = null;
+                if(wCh) { atk = wCh; wCh = null; } else if(cCh) { atk = cCh; cCh = null; }
+                if(atk) setTimeout(() => { if(active) jmp(atk); }, 5000);
+            }
+        }
+
+        function sw(c) {
+            cur = c; const v = document.getElementById('viewport'), l = document.getElementById('cam-label');
+            let img = urls.eE;
+            if(c==='w') { l.innerText = "West Hall"; img = wCh==='f' ? urls.wF : (wCh==='l' ? urls.wL : urls.wE); }
+            else if(c==='c') { l.innerText = "L. Corner"; img = cCh==='g' ? urls.cG : urls.cE; }
+            v.style.backgroundImage = `url('${img}')`;
+        }
+
+        function rv() { vt = 25; document.getElementById('btn-v').classList.remove('blink'); document.getElementById('btn-cam').classList.remove('blink'); document.getElementById('office').style.filter = "brightness(1)"; }
+        
+        function vLoop() {
+            setInterval(() => {
+                if(!active) return; vt--;
+                if(vt <= 10) { document.getElementById('btn-v').classList.add('blink'); document.getElementById('btn-cam').classList.add('blink'); }
+                if(vt <= 0) document.getElementById('office').style.filter = "brightness(0)";
             }, 1000);
         }
 
-        function checkMovement() {
-            // Chance for animatronic to leave cam and attack in 5s
-            if(Math.random() < 0.4) {
-                let attacker = null;
-                if(westChar) { attacker = westChar; westChar = null; }
-                else if(cornerChar) { attacker = cornerChar; cornerChar = null; }
-                
-                if(attacker) {
-                    setTimeout(() => { if(gameActive) triggerJumpscare(attacker); }, 5000);
-                }
-            }
+        function aiLoop() {
+            setInterval(() => { if(active && Math.random() < 0.25) jmp('fl'); }, 9000);
         }
 
-        function startTimers() {
-            // Flower Logic (Random attack)
-            setInterval(() => {
-                if(gameActive && Math.random() < 0.2) triggerJumpscare('flower');
-            }, 10000);
+        function jmp(n) {
+            active = false; const l = document.getElementById('js-layer'), i = document.getElementById('js-img'), s = document.getElementById('sc');
+            const map = { f: urls.jsF, l: urls.jsL, g: urls.jsG, fl: urls.jsFl };
+            i.src = map[n]; l.style.display = 'block'; s.volume = 1; s.play();
+            setTimeout(() => location.reload(), 2200);
         }
 
-        function triggerJumpscare(name) {
-            gameActive = false;
-            const layer = document.getElementById('jumpscare-layer');
-            const img = document.getElementById('jumpscare-img');
-            const aud = document.getElementById('scream');
-
-            img.src = jumpscares[name] || jumpscares.firey;
-            layer.style.display = 'block';
-            img.classList.add('shake');
-            aud.play();
-
-            setTimeout(() => location.reload(), 2000);
-        }
-
-        // --- NOISE GENERATOR ---
-        function startNoise() {
-            const canvas = document.getElementById('noise-canvas');
-            const ctx = canvas.getContext('2d');
-            
-            const resize = () => { canvas.width = window.innerWidth/2; canvas.height = window.innerHeight/2; };
-            window.addEventListener('resize', resize);
-            resize();
-
-            const loop = () => {
-                const w = canvas.width, h = canvas.height;
-                const idata = ctx.createImageData(w, h);
-                const buffer = new Uint32Array(idata.data.buffer);
-                for(let i=0; i<buffer.length; i++) {
-                    if(Math.random() < 0.5) buffer[i] = 0x10FFFFFF; // Low opacity white
-                    else buffer[i] = 0x00000000; // Transparent
-                }
-                ctx.putImageData(idata, 0, 0);
-                requestAnimationFrame(loop);
-            };
-            loop();
+        function noise() {
+            const c = document.getElementById('noise-canvas'), x = c.getContext('2d');
+            const r = () => { c.width = window.innerWidth/2; c.height = window.innerHeight/2; };
+            window.addEventListener('resize', r); r();
+            const l = () => {
+                const id = x.createImageData(c.width, c.height), b = new Uint32Array(id.data.buffer);
+                for(let i=0; i<b.length; i++) b[i] = Math.random() < 0.5 ? 0x15FFFFFF : 0;
+                x.putImageData(id, 0, 0); requestAnimationFrame(l);
+            }; l();
         }
     </script>
 </body>
