@@ -2,36 +2,47 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Survival Horror - BFDI Edition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mobile Horror BFDI</title>
     <style>
-        body { margin: 0; background: black; color: white; font-family: 'Courier New', Courier, monospace; overflow: hidden; }
+        /* Mobile Fullscreen Setup */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            background: black; overflow: hidden; touch-action: manipulation;
+        }
         
-        #game-container { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
+        #game-container { 
+            position: relative; width: 100vw; height: 100vh; 
+            display: flex; justify-content: center; align-items: center; 
+        }
 
-        /* Moving Grain/Noise Overlay */
+        /* Grainy Moving Noise */
         #noise-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: url('https://media.giphy.com/media/oEI9uWU0WMrQmto7bM/giphy.gif'); /* Moving grain texture */
+            background: url('https://media.giphy.com/media/oEI9uWU0WMrQmto7bM/giphy.gif'); 
             opacity: 0.15; pointer-events: none; z-index: 50; mix-blend-mode: screen;
         }
 
-        /* Office Backgrounds */
+        /* Main Office Background */
         #office { 
             width: 100%; height: 100%; 
             background-image: url('Untitled32_20251221222716.png'); 
-            background-size: cover; background-position: center; 
+            background-size: cover; background-position: center; background-repeat: no-repeat;
         }
 
-        /* UI Buttons: Transparent with White Outline */
-        .controls { position: absolute; bottom: 30px; display: flex; gap: 15px; z-index: 60; }
-        button { 
-            padding: 12px 20px; cursor: pointer; 
-            background: transparent; color: white; 
-            border: 2px solid white; font-weight: bold;
-            text-transform: uppercase; transition: 0.2s;
+        /* Touch-Friendly Buttons (Transparent with White Outline) */
+        .controls { 
+            position: absolute; bottom: 5%; width: 90%; 
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px; z-index: 60; 
         }
-        button:hover { background: rgba(255, 255, 255, 0.2); }
+        button { 
+            padding: 20px 10px; cursor: pointer; 
+            background: rgba(0, 0, 0, 0.4); color: white; 
+            border: 3px solid white; font-weight: bold; font-size: 1.1rem;
+            text-transform: uppercase; border-radius: 8px;
+        }
+        button:active { background: rgba(255, 255, 255, 0.4); }
 
         /* Jumpscare: Massive and Shaking */
         #jumpscare-overlay {
@@ -39,20 +50,20 @@
             width: 100%; height: 100%; z-index: 100; background-color: black;
         }
         #jumpscare-img {
-            width: 120%; height: 120%; /* Bigger than screen to allow for shaking */
-            position: absolute; top: -10%; left: -10%;
+            width: 150%; height: 150%; 
+            position: absolute; top: -25%; left: -25%;
             object-fit: contain;
         }
 
-        .shake-low-fps { animation: shake-anim 0.08s steps(2) infinite; }
+        .shake-low-fps { animation: shake-anim 0.07s steps(2) infinite; }
 
         @keyframes shake-anim {
-            0% { transform: translate(20px, 20px) rotate(1deg); }
-            50% { transform: translate(-30px, -10px) rotate(-1deg); }
-            100% { transform: translate(10px, -25px) rotate(0deg); }
+            0% { transform: translate(40px, 20px) scale(1.1); }
+            50% { transform: translate(-40px, -30px) scale(1.15); }
+            100% { transform: translate(10px, 40px) scale(1.1); }
         }
 
-        /* Camera View Logic */
+        /* Camera Layer */
         #cam-overlay {
             display: none; position: absolute; top: 0; left: 0; 
             width: 100%; height: 100%; z-index: 40;
@@ -72,10 +83,10 @@
         </div>
 
         <div class="controls">
-            <button onmousedown="setLight('left')" onmouseup="setLight('off')">Light Left</button>
-            <button onmousedown="setLight('right')" onmouseup="setLight('off')">Light Right</button>
+            <button ontouchstart="setLight('left')" ontouchend="setLight('off')">Light L</button>
+            <button ontouchstart="setLight('right')" ontouchend="setLight('off')">Light R</button>
             <button onclick="cycleCams()">Cameras</button>
-            <button onclick="resetVent()">Reset Ventilation</button>
+            <button onclick="resetVent()">Vent Reset</button>
         </div>
     </div>
 
@@ -88,7 +99,6 @@
         const scream = document.getElementById('screamSfx');
         const camOverlay = document.getElementById('cam-overlay');
 
-        // Assets
         const officeStates = {
             dark: 'Untitled32_20251221222716.png',
             left: 'Untitled32_20251221221743.png',
@@ -96,16 +106,16 @@
         };
 
         const jumpscares = [
-            'Untitled32_20251221223454.png', // Leafy
-            'Untitled32_20251221223705.png', // Gelatin
-            'Untitled32_20251221223956.png', // Flower
-            'Untitled32_20251221223315.png'  // Firey
+            'Untitled32_20251221223454.png', 
+            'Untitled32_20251221223705.png', 
+            'Untitled32_20251221223956.png', 
+            'Untitled32_20251221223315.png'
         ];
 
         const camImages = [
-            'Untitled31_20251221221402.png', // Cam with Gelatin
-            'Untitled31_20251221220901.png', // Cam with Firey
-            'Untitled31_20251221220956.png', // Cam with Leafy
+            'Untitled31_20251221221402.png', 
+            'Untitled31_20251221220901.png', 
+            'Untitled31_20251221220956.png', 
             'Cam2B.webp',
             'EastHallNoCamera.webp',
             'WestHallNoCamera.webp'
@@ -114,9 +124,11 @@
         let currentCamIndex = 0;
         let camsActive = false;
 
+        // Mobile Touch Support
         function setLight(side) {
             if (camsActive) return;
-            office.style.backgroundImage = `url('${officeStates[side] || officeStates.dark}')`;
+            const url = officeStates[side] || officeStates.dark;
+            office.style.backgroundImage = `url('${url}')`;
         }
 
         function cycleCams() {
@@ -136,10 +148,10 @@
         }
 
         function resetVent() {
-            // Ventilation logic can be added here
-            console.log("Ventilation reset.");
+            console.log("Ventilation clear.");
         }
 
+        // Run this in console to test: triggerJumpscare()
         function triggerJumpscare() {
             const randomChar = jumpscares[Math.floor(Math.random() * jumpscares.length)];
             jumpImg.src = randomChar;
@@ -147,7 +159,6 @@
             jumpImg.classList.add('shake-low-fps');
             
             scream.currentTime = 0;
-            scream.volume = 1.0;
             scream.play();
 
             setTimeout(() => {
@@ -155,8 +166,6 @@
                 jumpImg.classList.remove('shake-low-fps');
             }, 1200);
         }
-
-        // To test jumpscare, you can type triggerJumpscare() in the browser console
     </script>
 </body>
 </html>
