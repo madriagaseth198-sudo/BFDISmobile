@@ -10,92 +10,100 @@
 
         #game-container { position: relative; width: 100vw; height: 100vh; background: #000; }
         
-        /* 1. Office Background */
-        #office { 
-            width: 100%; height: 100%; 
-            background-size: cover; background-position: center; 
-            transition: filter 0.1s; 
-        }
+        #office { width: 100%; height: 100%; background-size: cover; background-position: center; transition: filter 0.1s; }
 
-        /* 2. Permanent Noise Overlay */
+        /* High Visibility Noise Overlay */
         #noise-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 1500; pointer-events: none; opacity: 0.12; 
-            mix-blend-mode: screen; background-color: transparent;
+            z-index: 2000; pointer-events: none; opacity: 0.25; /* Higher Opacity */
+            mix-blend-mode: screen;
         }
 
-        /* 3. Monitor View (The Tablet) */
+        /* Monitor Transition */
         #monitor {
-            position: absolute; bottom: -100%; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); z-index: 1000;
+            position: absolute; bottom: -110%; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 1000;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            transition: bottom 0.4s ease-in-out; /* Slide Up/Down transition */
+            transition: bottom 0.3s cubic-bezier(0.17, 0.84, 0.44, 1);
         }
         #monitor.active { bottom: 0; }
 
-        /* Monitor UI */
-        #viewport { width: 85vw; height: 60vh; border: 4px solid white; background-size: cover; background-position: center; position: relative; }
-        #cam-label { position: absolute; top:10px; left:10px; background: black; border: 1px solid white; padding: 5px; color: white; font-weight: bold; }
-        #exit-mon { position: absolute; top: 10px; right: 10px; color: red; border: 2px solid red; background: black; padding: 10px; font-weight: bold; }
-        .cam-row { margin-top: 15px; display: flex; gap: 10px; }
-        .cam-btn { padding: 12px 20px; border: 1px solid #777; background: black; color: white; font-size: 0.9rem; }
-        .selected { border-color: #0f0; color: #0f0; box-shadow: 0 0 10px #0f0; }
-
-        /* Game Elements */
-        #time-display { position: absolute; top: 15px; left: 20px; color: white; font-size: 1.5rem; text-shadow: 2px 2px black; z-index: 50; }
-        .btn { position: absolute; background: rgba(0,0,0,0.6); border: 2px solid white; color: white; padding: 20px; font-weight: bold; border-radius: 8px; z-index: 40; }
+        #viewport { width: 85vw; height: 60vh; border: 4px solid white; background-size: cover; background-position: center; }
+        
+        /* GUI */
+        #time-display { position: absolute; top: 15px; left: 20px; color: white; font-size: 1.5rem; z-index: 50; }
+        .btn { position: absolute; background: rgba(0,0,0,0.6); border: 2px solid white; color: white; padding: 20px; font-weight: bold; z-index: 40; border-radius: 8px;}
         #btn-l { left: 15px; bottom: 40%; }
         #btn-r { right: 15px; bottom: 40%; }
         #btn-cam { bottom: 15px; left: 50%; transform: translateX(-50%); width: 220px; text-align: center; }
         #btn-v { bottom: 15px; right: 15px; font-size: 0.7rem; }
-        
-        /* Jumpscare & Win */
-        #js-layer, #win-layer { display: none; position: absolute; top:0; left:0; width:100%; height:100%; z-index: 5000; background: black; }
-        #js-img { width: 140%; height: 140%; position: absolute; top: -20%; left: -20%; object-fit: contain; }
-        .shake { animation: s 0.05s infinite; }
-        @keyframes s { 0%{transform:translate(15px,15px)} 50%{transform:translate(-15px,-15px)} 100%{transform:translate(15px,-15px)} }
 
-        /* Menu */
-        #menu { position: absolute; top:0; left:0; width: 100%; height: 100%; background: #000; z-index: 6000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .blink { animation: bl 0.6s infinite; border-color: red !important; color: red !important; }
-        @keyframes bl { 50% { opacity: 0.3; } }
+        /* Jumpscare Animation Layered over Office */
+        #js-container {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1500; overflow: hidden; pointer-events: none;
+        }
+        #js-img {
+            width: 100%; height: 110%; object-fit: contain;
+            position: absolute; bottom: -100%; left: 0;
+            filter: blur(0px);
+        }
+
+        /* Fast Vertical Slide with Blur */
+        .js-animate {
+            animation: js-up 0.15s forwards, shake 0.05s infinite;
+        }
+
+        @keyframes js-up {
+            0% { bottom: -100%; filter: blur(20px) brightness(2); }
+            100% { bottom: 0%; filter: blur(0px) brightness(1); }
+        }
+
+        @keyframes shake {
+            0% { transform: translate(5px, 5px); }
+            50% { transform: translate(-5px, -10px); }
+            100% { transform: translate(10px, 0px); }
+        }
+
+        /* Menu / Loading */
+        #menu { position: absolute; top:0; left:0; width: 100%; height: 100%; background: #000; z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .blink { animation: bl 0.4s infinite; color: red !important; border-color: red !important; }
+        @keyframes bl { 50% { opacity: 0.2; } }
     </style>
 </head>
 <body>
 
     <div id="game-container">
         <canvas id="noise-overlay"></canvas>
-
         <div id="time-display">12 AM</div>
         <div id="office"></div>
 
         <button id="btn-l" class="btn" ontouchstart="lt('l')" ontouchend="lt('o')">LIGHT L</button>
         <button id="btn-r" class="btn" ontouchstart="lt('r')" ontouchend="lt('o')">LIGHT R</button>
-        <button id="btn-cam" class="btn" onclick="openM()">OPEN MONITOR</button>
+        <button id="btn-cam" class="btn" onclick="openM()">CAMERAS</button>
         <button id="btn-v" class="btn" onclick="rv()">RESET VENT</button>
 
         <div id="monitor">
-            <button id="exit-mon" onclick="closeM()">CLOSE MONITOR</button>
-            <div id="viewport"><div id="cam-label">CAM</div></div>
-            <div class="cam-row">
-                <button class="cam-btn" onclick="sw('w', this)">WEST HALL</button>
-                <button class="cam-btn" onclick="sw('c', this)">L. CORNER</button>
-                <button class="cam-btn" onclick="sw('e', this)">EAST HALL</button>
+            <button style="position:absolute; top:20px; right:20px; color:red; border:2px solid red; background:black; padding:10px;" onclick="closeM()">CLOSE</button>
+            <div id="viewport"></div>
+            <div style="margin-top:15px; display:flex; gap:10px;">
+                <button class="btn" style="position:static" onclick="sw('w')">WEST</button>
+                <button class="btn" style="position:static" onclick="sw('c')">CORNER</button>
+                <button class="btn" style="position:static" onclick="sw('e')">EAST</button>
             </div>
         </div>
 
-        <div id="js-layer"><img id="js-img" src="" class="shake"></div>
-        <div id="win-layer" style="display:none; color:white; text-align:center; padding-top:20%;">
-            <h1 style="font-size: 5rem; color: #0f0;">6 AM</h1>
-            <button class="btn" style="position:static" onclick="location.reload()">RESTART</button>
+        <div id="js-container">
+            <img id="js-img" src="">
         </div>
     </div>
 
     <div id="menu">
-        <h1 style="color:red; font-size: 2.5rem; margin:0;">BFDI's Night Shift</h1>
-        <h2 style="color:red; font-size: 1rem; margin-top:5px;">Five Nights at beefydies</h2>
+        <h1 style="color:red; font-size: 2.5rem;">BFDI's Night Shift</h1>
+        <h2 style="color:red; font-size: 1rem;">Five Nights at beefydies</h2>
         <br>
-        <button class="btn" style="position:static" onclick="start()">PLAY NIGHT</button>
+        <button id="start-btn" class="btn" style="position:static" onclick="start()">PLAY NIGHT</button>
+        <p id="load-msg" style="color:white; display:none; margin-top:20px;">PRE-LOADING ASSETS...</p>
     </div>
 
     <audio id="sc" src="https://s134-isny.freeconvert.com/task/694957662732b0f98d9b808f/FNAF_%20Jumpscare%20(FNAF%206)%20-%20Gaming%20Sound%20Effect%20(HD).mp3"></audio>
@@ -111,65 +119,60 @@
             cE: 'https://img.sanishtech.com/u/12bc819aaae99daf4c5b28486e2224ef.png',
             cG: 'https://img.sanishtech.com/u/7c814709433df313776004af8ad71350.png',
             eE: 'https://img.sanishtech.com/u/63b6a58856dac190eb88c695bc35b001.png',
-            jsF: 'https://img.sanishtech.com/u/a2ee57a87f0551b333dd6fc2caa2249d.png',
-            jsL: 'https://img.sanishtech.com/u/f61807b6a324f38b5fb2ea741b22f2be.png',
-            jsG: 'https://img.sanishtech.com/u/9b4aae19f2eb5a3f40bf116c2413c9aa.png',
-            jsFl: 'https://img.sanishtech.com/u/99149ed62a0c1c16c0aab97efd269bf3.png'
+            jsf: 'https://img.sanishtech.com/u/a2ee57a87f0551b333dd6fc2caa2249d.png',
+            jsl: 'https://img.sanishtech.com/u/f61807b6a324f38b5fb2ea741b22f2be.png',
+            jsg: 'https://img.sanishtech.com/u/9b4aae19f2eb5a3f40bf116c2413c9aa.png',
+            jsfl: 'https://img.sanishtech.com/u/99149ed62a0c1c16c0aab97efd269bf3.png'
         };
 
-        let active = false, mon = false, vt = 25, cur = 'w', hour = 0;
+        let active = false, mon = false, vt = 25, hour = 0;
         let wCh = Math.random() > 0.5 ? 'f' : 'l', cCh = 'g';
 
+        // PRELOADER: Loads images into browser cache immediately
+        function preload() {
+            Object.values(urls).forEach(src => {
+                const img = new Image();
+                img.src = src;
+            });
+        }
+
         function start() {
-            document.getElementById('menu').style.display = 'none';
-            active = true;
-            document.getElementById('office').style.backgroundImage = `url('${urls.off}')`;
-            noise(); ventLoop(); clockLoop(); flowerLoop();
+            preload();
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('load-msg').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('menu').style.display = 'none';
+                active = true;
+                document.getElementById('office').style.backgroundImage = `url('${urls.off}')`;
+                noise(); vLoop(); cLoop(); fLoop();
+            }, 6000);
         }
 
-        function openM() { 
-            if(!active) return; 
-            mon = true; 
-            document.getElementById('monitor').classList.add('active'); 
-            sw(cur, null); 
-        }
-
+        function openM() { if(!active) return; mon = true; document.getElementById('monitor').classList.add('active'); sw('w'); }
         function closeM() { 
-            mon = false; 
-            document.getElementById('monitor').classList.remove('active'); 
-            // AI Movement on Close
+            mon = false; document.getElementById('monitor').classList.remove('active'); 
             if(Math.random() < 0.4) {
-                let atk = null;
-                if(wCh) { atk = wCh; wCh = null; } else if(cCh) { atk = cCh; cCh = null; }
-                if(atk) setTimeout(() => { if(active) jmp(atk); }, 5000);
+                let a = null; if(wCh) {a=wCh; wCh=null;} else if(cCh) {a=cCh; cCh=null;}
+                if(a) setTimeout(() => { if(active) jmp(a); }, 5000);
             }
         }
 
-        function sw(c, btn) {
-            cur = c; 
-            const v = document.getElementById('viewport'), l = document.getElementById('cam-label');
-            document.querySelectorAll('.cam-btn').forEach(b => b.classList.remove('selected'));
-            if(btn) btn.classList.add('selected');
-            
-            let img = urls.eE;
-            if(c==='w') { l.innerText = "WEST HALL"; img = wCh==='f' ? urls.wF : (wCh==='l' ? urls.wL : urls.wE); }
-            else if(c==='c') { l.innerText = "L. CORNER"; img = cCh==='g' ? urls.cG : urls.cE; }
-            v.style.backgroundImage = `url('${img}')`;
+        function sw(c) {
+            const v = document.getElementById('viewport');
+            let i = urls.eE;
+            if(c==='w') i = wCh==='f' ? urls.wF : (wCh==='l' ? urls.wL : urls.wE);
+            else if(c==='c') i = cCh==='g' ? urls.cG : urls.cE;
+            v.style.backgroundImage = `url('${i}')`;
         }
 
         function lt(s) {
             if(mon) return;
-            let bg = (s==='l') ? urls.offL : (s==='r' ? urls.offR : urls.off);
-            document.getElementById('office').style.backgroundImage = `url('${bg}')`;
+            document.getElementById('office').style.backgroundImage = `url('${s==='l'?urls.offL:(s==='r'?urls.offR:urls.off)}')`;
         }
 
-        function rv() { 
-            vt = 25; 
-            document.getElementById('btn-v').classList.remove('blink');
-            document.getElementById('office').style.filter = "brightness(1)";
-        }
+        function rv() { vt = 25; document.getElementById('btn-v').classList.remove('blink'); document.getElementById('office').style.filter = "brightness(1)"; }
         
-        function ventLoop() {
+        function vLoop() {
             setInterval(() => {
                 if(!active) return; vt--;
                 if(vt <= 10) document.getElementById('btn-v').classList.add('blink');
@@ -177,37 +180,40 @@
             }, 1000);
         }
 
-        function clockLoop() {
-            setInterval(() => {
-                if(!active) return;
-                hour++;
-                if(hour >= 6) { active = false; document.getElementById('win-layer').style.display = 'block'; }
-                else document.getElementById('time-display').innerText = hour + " AM";
-            }, 60000);
+        function cLoop() {
+            setInterval(() => { if(!active) return; hour++; if(hour>=6) location.reload(); else document.getElementById('time-display').innerText = hour + " AM"; }, 60000);
         }
 
-        function flowerLoop() {
-            setInterval(() => { if(active && Math.random() < 0.15) jmp('fl'); }, 12000);
-        }
+        function fLoop() { setInterval(() => { if(active && Math.random() < 0.1) jmp('fl'); }, 10000); }
 
         function jmp(n) {
             active = false;
-            const l = document.getElementById('js-layer'), i = document.getElementById('js-img'), s = document.getElementById('sc');
-            const map = { f: urls.jsF, l: urls.jsL, g: urls.jsG, fl: urls.jsFl };
-            i.src = map[n]; l.style.display = 'block'; 
-            s.currentTime = 0; s.play();
-            setTimeout(() => location.reload(), 2500);
+            const container = document.getElementById('js-container');
+            const img = document.getElementById('js-img');
+            const s = document.getElementById('sc');
+            
+            // Turn office dark for better layered look
+            document.getElementById('office').style.filter = "brightness(0.3) contrast(1.5)";
+            
+            img.src = urls['js'+n];
+            container.style.display = 'block';
+            img.classList.add('js-animate');
+            
+            s.loop = true; // LOOP SOUND
+            s.play();
+            
+            setTimeout(() => location.reload(), 3000);
         }
 
         function noise() {
             const c = document.getElementById('noise-overlay'), x = c.getContext('2d');
-            const r = () => { c.width = window.innerWidth/2; c.height = window.innerHeight/2; };
+            const r = () => { c.width = window.innerWidth/3; c.height = window.innerHeight/3; };
             window.addEventListener('resize', r); r();
-            const draw = () => {
+            const d = () => {
                 const id = x.createImageData(c.width, c.height), b = new Uint32Array(id.data.buffer);
-                for(let i=0; i<b.length; i++) b[i] = Math.random() < 0.5 ? 0x18FFFFFF : 0;
-                x.putImageData(id, 0, 0); requestAnimationFrame(draw);
-            }; draw();
+                for(let i=0; i<b.length; i++) b[i] = Math.random() < 0.6 ? 0x35FFFFFF : 0; // Much higher density
+                x.putImageData(id, 0, 0); requestAnimationFrame(d);
+            }; d();
         }
     </script>
 </body>
