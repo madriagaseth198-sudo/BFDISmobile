@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BFDI Night Shift - Tablet Edition</title>
+    <title>BFDI Night Shift - Fixed</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: black; overflow: hidden; font-family: 'Courier New', monospace; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #111; overflow: hidden; font-family: 'Courier New', monospace; }
 
         /* --- LAYERS --- */
         #game-container { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
@@ -14,92 +14,90 @@
         /* 1. Office Layer */
         #office { 
             width: 100%; height: 100%; 
-            background-image: url('Untitled32_20251221222716.png'); 
+            background-color: #222; /* Fallback color if image missing */
             background-size: cover; background-position: center; 
             transition: filter 0.1s;
         }
 
-        /* 2. Office UI (Lights/Buttons) */
-        .office-controls { position: absolute; width: 100%; height: 100%; top: 0; left: 0; z-index: 10; pointer-events: none; }
+        /* 2. STATIC NOISE OVERLAY */
+        #noise-canvas {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 999; /* Very high up */
+            pointer-events: none; /* Let clicks pass through */
+            opacity: 0.1;
+            mix-blend-mode: screen;
+        }
+
+        /* 3. Office UI (Lights/Buttons) */
+        .office-controls { position: absolute; width: 100%; height: 100%; top: 0; left: 0; z-index: 20; pointer-events: none; }
         .btn-office { 
             pointer-events: auto; position: absolute; 
-            background: rgba(0,0,0,0.4); border: 2px solid white; color: white;
+            background: rgba(0,0,0,0.5); border: 2px solid white; color: white;
             padding: 20px; font-weight: bold; text-transform: uppercase; border-radius: 8px;
+            font-size: 1rem;
         }
         .btn-office:active { background: rgba(255,255,255,0.3); }
 
-        /* Positioning */
-        #btn-light-l { left: 20px; bottom: 40%; }
-        #btn-light-r { right: 20px; bottom: 40%; }
-        #btn-cams { bottom: 20px; left: 50%; transform: translateX(-50%); width: 200px; text-align: center; }
-        #btn-vent { bottom: 20px; right: 20px; font-size: 0.8rem; }
+        /* Positions */
+        #btn-light-l { left: 20px; bottom: 45%; }
+        #btn-light-r { right: 20px; bottom: 45%; }
+        #btn-cams { bottom: 20px; left: 50%; transform: translateX(-50%); width: 220px; height: 60px; }
+        #btn-vent { bottom: 20px; right: 20px; font-size: 0.8rem; height: 60px; }
         #btn-menu { top: 20px; right: 20px; padding: 10px; font-size: 0.8rem; }
 
-        /* 3. Camera Monitor Layer (The Overlay) */
+        /* 4. Monitor Overlay */
         #monitor-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.95);
-            z-index: 50;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            opacity: 0; pointer-events: none; transition: opacity 0.3s ease-in-out;
+            z-index: 100;
+            display: none; /* Hidden by default */
+            flex-direction: column; align-items: center; justify-content: center;
         }
-        /* When active class is added via JS */
-        #monitor-overlay.active { opacity: 1; pointer-events: auto; }
+        #monitor-overlay.active { display: flex; }
 
-        /* The Camera Viewport (Middle with White Outline) */
+        /* Camera Viewport */
         #cam-viewport {
-            width: 70vw; height: 60vh;
+            width: 80vw; height: 60vh;
             border: 4px solid white;
-            background-color: #111;
+            background-color: #333; /* Dark gray fallback */
             background-size: cover; background-position: center;
             position: relative;
-            box-shadow: 0 0 20px rgba(255,255,255,0.2);
+            margin-bottom: 20px;
         }
 
-        /* Camera Label */
         #cam-label {
             position: absolute; top: 10px; left: 10px;
             background: black; color: white; padding: 5px 10px;
-            border: 1px solid white; font-size: 1.2rem;
+            border: 1px solid white;
         }
 
-        /* Camera Buttons (Bottom Row) */
-        .cam-buttons-row {
-            margin-top: 20px; display: flex; gap: 15px;
-        }
+        /* Camera Buttons */
+        .cam-buttons-row { display: flex; gap: 10px; }
         .btn-cam {
-            padding: 15px 20px; border: 2px solid #555; background: black; color: #888;
-            font-weight: bold; cursor: pointer; text-transform: uppercase;
+            padding: 15px; border: 2px solid #555; background: #000; color: #aaa;
+            font-weight: bold; text-transform: uppercase;
         }
-        .btn-cam.selected { border-color: #00ff00; color: #00ff00; background: #111; }
+        .btn-cam.selected { border-color: #0f0; color: #0f0; }
 
-        /* Exit Button (Top Right of Monitor) */
         #btn-exit-cam {
-            position: absolute; top: 30px; right: 30px;
+            position: absolute; top: 20px; right: 20px;
             border: 2px solid red; color: red; background: black;
-            padding: 10px 30px; font-size: 1.2rem; cursor: pointer;
-        }
-
-        /* 4. Code Generated Noise (Canvas) */
-        #noise-canvas {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 80; pointer-events: none; opacity: 0.15; mix-blend-mode: screen;
+            padding: 10px 30px; font-size: 1.2rem;
         }
 
         /* 5. Jumpscare Layer */
-        #jumpscare-layer { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; background: black; }
-        #jumpscare-img { width: 120%; height: 120%; position: absolute; top: -10%; left: -10%; object-fit: contain; }
-        
+        #jumpscare-layer { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2000; background: black; }
+        #jumpscare-img { width: 100%; height: 100%; object-fit: contain; }
         .shake { animation: shake 0.1s steps(2) infinite; }
-        @keyframes shake { 0% { transform: translate(10px, 10px); } 100% { transform: translate(-10px, -10px); } }
+        @keyframes shake { 0% { transform: translate(5px, 5px); } 100% { transform: translate(-5px, -5px); } }
 
-        /* Menus */
-        #main-menu { position: absolute; top:0; left:0; width: 100%; height: 100%; background: #111; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        h1 { color: red; font-size: 3rem; margin-bottom: 5px; text-shadow: 2px 2px black; }
-        h2 { color: red; font-size: 1.2rem; margin-top: 0; }
-        .red-blink { animation: blinkRed 1s infinite; border-color: red !important; color: red !important; }
+        /* Main Menu */
+        #main-menu { position: absolute; top:0; left:0; width: 100%; height: 100%; background: #000; z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        h1 { color: red; font-size: 2.5rem; text-shadow: 2px 2px #333; }
+
+        /* Red Blink Animation */
+        .red-blink { animation: blinkRed 0.5s infinite; border-color: red !important; color: red !important; }
         @keyframes blinkRed { 50% { opacity: 0.5; } }
-
     </style>
 </head>
 <body>
@@ -110,18 +108,18 @@
 
         <div id="main-menu">
             <h1>BFDI's Night Shift</h1>
-            <h2>Five Nights at beefydies</h2>
-            <br>
-            <button class="btn-office" style="position: relative; left: auto; bottom: auto;" onclick="startGame()">PLAY</button>
-            <div id="loading-text" style="display:none; color:white; margin-top:20px;">LOADING...</div>
+            <h2 style="color:red; font-size: 1rem;">Five Nights at beefydies</h2>
+            <br><br>
+            <button class="btn-office" style="position:static; margin-top:20px;" onclick="startGame()">PLAY GAME</button>
+            <p id="loading-txt" style="color:white; display:none; margin-top:20px;">LOADING ASSETS...</p>
         </div>
 
         <div id="office"></div>
 
         <div class="office-controls">
             <button id="btn-menu" class="btn-office" onclick="location.reload()">MENU</button>
-            <button id="btn-light-l" class="btn-office" ontouchstart="light('left')" ontouchend="light('off')" onmousedown="light('left')" onmouseup="light('off')">LIGHT L</button>
-            <button id="btn-light-r" class="btn-office" ontouchstart="light('right')" ontouchend="light('off')" onmousedown="light('right')" onmouseup="light('off')">LIGHT R</button>
+            <button id="btn-light-l" class="btn-office" ontouchstart="light('left')" ontouchend="light('off')">LIGHT L</button>
+            <button id="btn-light-r" class="btn-office" ontouchstart="light('right')" ontouchend="light('off')">LIGHT R</button>
             <button id="btn-cams" class="btn-office" onclick="openMonitor()">CAMERAS</button>
             <button id="btn-vent" class="btn-office" onclick="resetVent()">RESET VENT</button>
         </div>
@@ -130,12 +128,12 @@
             <button id="btn-exit-cam" onclick="closeMonitor()">EXIT</button>
             
             <div id="cam-viewport">
-                <div id="cam-label">CAM 1</div>
+                <div id="cam-label">CAM SYSTEM</div>
             </div>
 
             <div class="cam-buttons-row">
                 <button class="btn-cam" onclick="switchCam('west')">West Hall</button>
-                <button class="btn-cam" onclick="switchCam('corner')">Left Corner</button>
+                <button class="btn-cam" onclick="switchCam('corner')">L. Corner</button>
                 <button class="btn-cam" onclick="switchCam('east')">East Hall</button>
             </div>
         </div>
@@ -148,229 +146,175 @@
     <audio id="scream" src="five-nights-at-freddys-full-scream-sound_2.mp3"></audio>
 
     <script>
-        // --- ASSETS ---
-        // Ensure these filenames match EXACTLY
+        // --- IMAGE PATHS (Check these!) ---
         const officeMain = 'Untitled32_20251221222716.png';
         const officeL = 'Untitled32_20251221221743.png';
         const officeR = 'Untitled32_20251221221738.png';
 
-        // Camera Backgrounds
         const camAssets = {
             westEmpty: 'WestHallNoCamera.webp',
-            westFirey: 'Untitled31_20251221220901.png', // Firey
-            westLeafy: 'Untitled31_20251221220956.png', // Leafy
-            cornerEmpty: 'Cam2B.webp',                 // Assuming Cam2B is the corner
-            cornerGelatin: 'Untitled31_20251221221402.png', // Gelatin
+            westFirey: 'Untitled31_20251221220901.png',
+            westLeafy: 'Untitled31_20251221220956.png',
+            cornerEmpty: 'Cam2B.webp',
+            cornerGelatin: 'Untitled31_20251221221402.png',
             eastEmpty: 'EastHallNoCamera.webp'
         };
 
-        const jumpscareImages = {
+        const jumpscares = {
             leafy: 'Untitled32_20251221223454.png',
             gelatin: 'Untitled32_20251221223705.png',
             flower: 'Untitled32_20251221223956.png',
             firey: 'Untitled32_20251221223315.png'
         };
 
-        // --- GAME STATE ---
+        // --- STATE ---
         let gameActive = false;
         let monitorOpen = false;
-        let currentCam = 'west'; // west, corner, east
         let ventTimer = 25;
+        let westChar = Math.random() > 0.5 ? 'firey' : 'leafy';
+        let cornerChar = 'gelatin';
 
-        // Animatronic Locations (Randomized at start)
-        let westAnimatronic = Math.random() > 0.5 ? 'firey' : 'leafy'; 
-        let cornerAnimatronic = 'gelatin';
-        
-        // --- NOISE GENERATOR (Code based, no GIF needed) ---
-        const canvas = document.getElementById('noise-canvas');
-        const ctx = canvas.getContext('2d');
-        
-        function resizeCanvas() {
-            canvas.width = window.innerWidth / 2; // Low res for performance
-            canvas.height = window.innerHeight / 2;
-        }
-        window.onresize = resizeCanvas;
-        resizeCanvas();
-
-        function drawNoise() {
-            if(!gameActive && !monitorOpen) { requestAnimationFrame(drawNoise); return; } // Optimization
-            
-            const w = canvas.width;
-            const h = canvas.height;
-            const idata = ctx.createImageData(w, h);
-            const buffer32 = new Uint32Array(idata.data.buffer);
-            const len = buffer32.length;
-
-            for (let i = 0; i < len; i++) {
-                if (Math.random() < 0.5) buffer32[i] = 0xff000000; // Transparent
-                else buffer32[i] = 0xffffffff; // White
-            }
-            ctx.putImageData(idata, 0, 0);
-            requestAnimationFrame(drawNoise);
-        }
-        
-        // --- CORE FUNCTIONS ---
-
+        // --- START GAME ---
         function startGame() {
-            document.getElementById('loading-text').style.display = 'block';
+            document.getElementById('loading-txt').style.display = 'block';
+            
+            // 6 second load
             setTimeout(() => {
                 document.getElementById('main-menu').style.display = 'none';
                 gameActive = true;
-                drawNoise(); // Start noise loop
-                startVentTimer();
-                startFlowerLogic(); // Flower is invisible, separate logic
-            }, 6000); // 6 seconds load
+                
+                // Initialize Office BG
+                document.getElementById('office').style.backgroundImage = `url('${officeMain}')`;
+                
+                startNoise();
+                startVentSystem();
+                startTimers();
+            }, 6000);
         }
 
-        function light(state) {
+        // --- OFFICE ---
+        function light(side) {
             if(monitorOpen) return;
-            const offDiv = document.getElementById('office');
-            if(state === 'left') offDiv.style.backgroundImage = `url('${officeL}')`;
-            else if(state === 'right') offDiv.style.backgroundImage = `url('${officeR}')`;
-            else offDiv.style.backgroundImage = `url('${officeMain}')`;
+            const el = document.getElementById('office');
+            if(side === 'left') el.style.backgroundImage = `url('${officeL}')`;
+            else if(side === 'right') el.style.backgroundImage = `url('${officeR}')`;
+            else el.style.backgroundImage = `url('${officeMain}')`;
         }
 
-        // --- MONITOR LOGIC ---
-
+        // --- CAMS ---
         function openMonitor() {
             if(!gameActive) return;
             monitorOpen = true;
             document.getElementById('monitor-overlay').classList.add('active');
-            updateCamView();
+            // Default to West Hall
+            switchCam('west');
         }
 
         function closeMonitor() {
             monitorOpen = false;
             document.getElementById('monitor-overlay').classList.remove('active');
-            
-            // LOGIC: Chance to disappear -> Jumpscare 5 seconds later
-            checkMonitorExitMechanic();
+            checkMovement(); // 5s delay check
         }
 
-        function switchCam(camName) {
-            currentCam = camName;
-            
-            // Update buttons visuals
-            const buttons = document.querySelectorAll('.btn-cam');
-            buttons.forEach(b => b.classList.remove('selected'));
-            event.target.classList.add('selected');
+        function switchCam(cam) {
+            const view = document.getElementById('cam-viewport');
+            const lbl = document.getElementById('cam-label');
+            let img = '';
 
-            updateCamView();
-        }
-
-        function updateCamView() {
-            const viewport = document.getElementById('cam-viewport');
-            const label = document.getElementById('cam-label');
-            let bg = '';
-
-            if (currentCam === 'west') {
-                label.innerText = "Left Hall";
-                // Show Firey or Leafy if they are there, otherwise empty
-                if (westAnimatronic === 'firey') bg = camAssets.westFirey;
-                else if (westAnimatronic === 'leafy') bg = camAssets.westLeafy;
-                else bg = camAssets.westEmpty;
-            } 
-            else if (currentCam === 'corner') {
-                label.innerText = "Left Corner";
-                if (cornerAnimatronic === 'gelatin') bg = camAssets.cornerGelatin;
-                else bg = camAssets.cornerEmpty;
-            } 
-            else if (currentCam === 'east') {
-                label.innerText = "East Hall";
-                bg = camAssets.eastEmpty;
+            if(cam === 'west') {
+                lbl.innerText = "West Hall";
+                if(westChar === 'firey') img = camAssets.westFirey;
+                else if(westChar === 'leafy') img = camAssets.westLeafy;
+                else img = camAssets.westEmpty;
+            } else if(cam === 'corner') {
+                lbl.innerText = "Left Corner";
+                img = (cornerChar === 'gelatin') ? camAssets.cornerGelatin : camAssets.cornerEmpty;
+            } else {
+                lbl.innerText = "East Hall";
+                img = camAssets.eastEmpty;
             }
 
-            viewport.style.backgroundImage = `url('${bg}')`;
+            view.style.backgroundImage = `url('${img}')`;
         }
 
-        // --- AI & JUMPSCARE LOGIC ---
-
-        function checkMonitorExitMechanic() {
-            // "Medium Chance" ~ 40%
-            if (Math.random() < 0.4) {
-                // Determine who attacks (priority to West Hall guys)
-                let attacker = null;
-                
-                if (westAnimatronic) {
-                    attacker = westAnimatronic;
-                    westAnimatronic = null; // They disappear from cam
-                } else if (cornerAnimatronic) {
-                    attacker = cornerAnimatronic; // Gelatin logic fallback
-                    cornerAnimatronic = null;
-                }
-
-                if (attacker) {
-                    console.log(attacker + " is coming...");
-                    setTimeout(() => {
-                        if(gameActive) triggerJumpscare(attacker);
-                    }, 5000); // 5 Seconds later
-                }
-            }
-        }
-
-        function startFlowerLogic() {
-            // Flower does not show on cams. 
-            // Check every 8 seconds, 30% chance to attack
-            setInterval(() => {
-                if(gameActive && Math.random() < 0.3) {
-                    triggerJumpscare('flower');
-                }
-            }, 8000); 
-        }
-
-        function triggerJumpscare(character) {
-            if(!gameActive) return;
-            gameActive = false;
-            
-            const layer = document.getElementById('jumpscare-layer');
-            const img = document.getElementById('jumpscare-img');
-            const sound = document.getElementById('scream');
-
-            img.src = jumpscareImages[character] || jumpscareImages.firey;
-            
-            layer.style.display = 'block';
-            img.classList.add('shake');
-            sound.volume = 1.0;
-            sound.play();
-
-            setTimeout(() => {
-                location.reload(); // Reset game
-            }, 2000);
-        }
-
-        // --- VENTILATION LOGIC ---
-
-        function startVentTimer() {
-            setInterval(() => {
-                if (!gameActive) return;
-                ventTimer--;
-
-                const ventBtn = document.getElementById('btn-vent');
-                const camBtn = document.getElementById('btn-cams');
-
-                if (ventTimer <= 10) {
-                    ventBtn.classList.add('red-blink');
-                    camBtn.classList.add('red-blink');
-                } else {
-                    ventBtn.classList.remove('red-blink');
-                    camBtn.classList.remove('red-blink');
-                }
-
-                if (ventTimer <= 0) {
-                    document.getElementById('office').style.filter = "brightness(0)";
-                } else {
-                    document.getElementById('office').style.filter = "brightness(1)";
-                }
-            }, 1000);
-        }
-
+        // --- MECHANICS ---
         function resetVent() {
             ventTimer = 25;
             document.getElementById('btn-vent').classList.remove('red-blink');
             document.getElementById('btn-cams').classList.remove('red-blink');
             document.getElementById('office').style.filter = "brightness(1)";
         }
-        
+
+        function startVentSystem() {
+            setInterval(() => {
+                if(!gameActive) return;
+                ventTimer--;
+                if(ventTimer <= 10) {
+                    document.getElementById('btn-vent').classList.add('red-blink');
+                    document.getElementById('btn-cams').classList.add('red-blink');
+                }
+                if(ventTimer <= 0) {
+                    document.getElementById('office').style.filter = "brightness(0)";
+                }
+            }, 1000);
+        }
+
+        function checkMovement() {
+            // Chance for animatronic to leave cam and attack in 5s
+            if(Math.random() < 0.4) {
+                let attacker = null;
+                if(westChar) { attacker = westChar; westChar = null; }
+                else if(cornerChar) { attacker = cornerChar; cornerChar = null; }
+                
+                if(attacker) {
+                    setTimeout(() => { if(gameActive) triggerJumpscare(attacker); }, 5000);
+                }
+            }
+        }
+
+        function startTimers() {
+            // Flower Logic (Random attack)
+            setInterval(() => {
+                if(gameActive && Math.random() < 0.2) triggerJumpscare('flower');
+            }, 10000);
+        }
+
+        function triggerJumpscare(name) {
+            gameActive = false;
+            const layer = document.getElementById('jumpscare-layer');
+            const img = document.getElementById('jumpscare-img');
+            const aud = document.getElementById('scream');
+
+            img.src = jumpscares[name] || jumpscares.firey;
+            layer.style.display = 'block';
+            img.classList.add('shake');
+            aud.play();
+
+            setTimeout(() => location.reload(), 2000);
+        }
+
+        // --- NOISE GENERATOR ---
+        function startNoise() {
+            const canvas = document.getElementById('noise-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            const resize = () => { canvas.width = window.innerWidth/2; canvas.height = window.innerHeight/2; };
+            window.addEventListener('resize', resize);
+            resize();
+
+            const loop = () => {
+                const w = canvas.width, h = canvas.height;
+                const idata = ctx.createImageData(w, h);
+                const buffer = new Uint32Array(idata.data.buffer);
+                for(let i=0; i<buffer.length; i++) {
+                    if(Math.random() < 0.5) buffer[i] = 0x10FFFFFF; // Low opacity white
+                    else buffer[i] = 0x00000000; // Transparent
+                }
+                ctx.putImageData(idata, 0, 0);
+                requestAnimationFrame(loop);
+            };
+            loop();
+        }
     </script>
 </body>
-    </html>
+</html>
