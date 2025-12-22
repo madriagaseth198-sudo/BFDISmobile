@@ -3,168 +3,209 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mobile Horror BFDI</title>
+    <title>BFDI's Night Shift</title>
     <style>
-        /* Mobile Fullscreen Setup */
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body, html { 
-            margin: 0; padding: 0; width: 100%; height: 100%; 
-            background: black; overflow: hidden; touch-action: manipulation;
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: black; overflow: hidden; font-family: 'Courier New', monospace; }
+
+        /* Noise Overlay */
+        #noise {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: url('https://media.giphy.com/media/oEI9uWU0WMrQmto7bM/giphy.gif');
+            opacity: 0.12; pointer-events: none; z-index: 1000; mix-blend-mode: screen;
         }
+
+        /* Screens */
+        .screen { position: absolute; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; color: white; transition: opacity 1s; }
+        #menu-screen { display: flex; text-align: center; background: #050505; }
+        #loading-screen { background: black; z-index: 500; }
+        #game-screen { background: #000; }
+
+        /* Typography */
+        h1 { color: #ff0000; font-size: 3rem; margin: 0; text-shadow: 2px 2px #500; }
+        h2 { color: #ff0000; font-size: 1.2rem; margin-top: 5px; }
+
+        /* Buttons */
+        .btn {
+            background: transparent; border: 2px solid white; color: white;
+            padding: 15px 40px; font-size: 1.2rem; cursor: pointer; margin: 10px;
+            text-transform: uppercase; border-radius: 4px;
+        }
+        .btn:active { background: rgba(255,255,255,0.2); }
+
+        /* Game Layout */
+        #office { width: 100%; height: 100%; background-size: cover; background-position: center; }
+        #cam-view { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-size: cover; z-index: 10; display: none; }
         
-        #game-container { 
-            position: relative; width: 100vw; height: 100vh; 
-            display: flex; justify-content: center; align-items: center; 
-        }
+        /* Positioning Controls */
+        #btn-pause { position: absolute; top: 20px; right: 20px; z-index: 80; padding: 10px; border-width: 1px; font-size: 0.8rem; }
+        #btn-light-l { position: absolute; left: 20px; bottom: 40%; z-index: 60; }
+        #btn-light-r { position: absolute; right: 20px; bottom: 40%; z-index: 60; }
+        #btn-cams { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 60; width: 200px; }
+        #btn-vent { position: absolute; bottom: 20px; right: 20px; z-index: 70; border-color: white; color: white; }
 
-        /* Grainy Moving Noise */
-        #noise-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: url('https://media.giphy.com/media/oEI9uWU0WMrQmto7bM/giphy.gif'); 
-            opacity: 0.15; pointer-events: none; z-index: 50; mix-blend-mode: screen;
-        }
+        /* Ventilation Warning */
+        .warning-red { border-color: #ff0000 !important; color: #ff0000 !important; animation: blink 0.5s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 
-        /* Main Office Background */
-        #office { 
-            width: 100%; height: 100%; 
-            background-image: url('Untitled32_20251221222716.png'); 
-            background-size: cover; background-position: center; background-repeat: no-repeat;
-        }
+        /* Jumpscare */
+        #jumpscare-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2000; background: black; }
+        #jumpscare-img { width: 150%; height: 150%; position: absolute; top: -25%; left: -25%; object-fit: contain; }
+        .shake { animation: shake-anim 0.08s steps(2) infinite; }
+        @keyframes shake-anim { 0% { transform: translate(30px,30px); } 50% { transform: translate(-30px,-30px); } 100% { transform: translate(15px,-15px); } }
 
-        /* Touch-Friendly Buttons (Transparent with White Outline) */
-        .controls { 
-            position: absolute; bottom: 5%; width: 90%; 
-            display: grid; grid-template-columns: 1fr 1fr; gap: 10px; z-index: 60; 
-        }
-        button { 
-            padding: 20px 10px; cursor: pointer; 
-            background: rgba(0, 0, 0, 0.4); color: white; 
-            border: 3px solid white; font-weight: bold; font-size: 1.1rem;
-            text-transform: uppercase; border-radius: 8px;
-        }
-        button:active { background: rgba(255, 255, 255, 0.4); }
-
-        /* Jumpscare: Massive and Shaking */
-        #jumpscare-overlay {
-            display: none; position: absolute; top: 0; left: 0; 
-            width: 100%; height: 100%; z-index: 100; background-color: black;
-        }
-        #jumpscare-img {
-            width: 150%; height: 150%; 
-            position: absolute; top: -25%; left: -25%;
-            object-fit: contain;
-        }
-
-        .shake-low-fps { animation: shake-anim 0.07s steps(2) infinite; }
-
-        @keyframes shake-anim {
-            0% { transform: translate(40px, 20px) scale(1.1); }
-            50% { transform: translate(-40px, -30px) scale(1.15); }
-            100% { transform: translate(10px, 40px) scale(1.1); }
-        }
-
-        /* Camera Layer */
-        #cam-overlay {
-            display: none; position: absolute; top: 0; left: 0; 
-            width: 100%; height: 100%; z-index: 40;
-            background-size: cover; background-position: center;
-        }
+        /* Settings Style */
+        .setting-row { margin: 15px; display: flex; align-items: center; gap: 10px; }
+        input[type=range] { cursor: pointer; width: 150px; }
     </style>
 </head>
 <body>
 
-    <div id="game-container">
-        <div id="noise-overlay"></div>
+    <div id="noise"></div>
+
+    <div id="menu-screen" class="screen">
+        <h1>BFDI's Night Shift</h1>
+        <h2>Five Nights at beefydies</h2>
+        <br>
+        <button class="btn" onclick="startGame()">Play</button>
+        <button class="btn" onclick="toggleSettings(true)">Settings</button>
+    </div>
+
+    <div id="settings-screen" class="screen">
+        <h1>Settings</h1>
+        <div class="setting-row">
+            <span>AI Aggression:</span>
+            <input type="range" id="ai-range" min="1" max="20" value="5">
+        </div>
+        <div class="setting-row">
+            <span>Scream Volume:</span>
+            <input type="range" id="vol-range" min="0" max="100" value="100">
+        </div>
+        <button class="btn" onclick="toggleSettings(false)">Back</button>
+    </div>
+
+    <div id="loading-screen" class="screen">
+        <h1 style="font-size: 1rem; color: white;">LOADING...</h1>
+    </div>
+
+    <div id="game-screen" class="screen">
         <div id="office"></div>
-        <div id="cam-overlay"></div>
+        <div id="cam-view"></div>
+        
+        <button id="btn-pause" class="btn" onclick="location.reload()">Menu</button>
+        <button id="btn-light-l" class="btn" ontouchstart="setLight('left')" ontouchend="setLight('off')">Light L</button>
+        <button id="btn-light-r" class="btn" ontouchstart="setLight('right')" ontouchend="setLight('off')">Light R</button>
+        <button id="btn-cams" class="btn" onclick="toggleCams()">Cameras</button>
+        <button id="btn-vent" class="btn" onclick="resetVent()">Reset Ventilation</button>
 
         <div id="jumpscare-overlay">
-            <img id="jumpscare-img" src="" alt="Jumpscare">
-        </div>
-
-        <div class="controls">
-            <button ontouchstart="setLight('left')" ontouchend="setLight('off')">Light L</button>
-            <button ontouchstart="setLight('right')" ontouchend="setLight('off')">Light R</button>
-            <button onclick="cycleCams()">Cameras</button>
-            <button onclick="resetVent()">Vent Reset</button>
+            <img id="jumpscare-img" class="shake" src="">
         </div>
     </div>
 
     <audio id="screamSfx" src="five-nights-at-freddys-full-scream-sound_2.mp3"></audio>
 
     <script>
-        const office = document.getElementById('office');
-        const jumpOverlay = document.getElementById('jumpscare-overlay');
-        const jumpImg = document.getElementById('jumpscare-img');
-        const scream = document.getElementById('screamSfx');
-        const camOverlay = document.getElementById('cam-overlay');
-
-        const officeStates = {
-            dark: 'Untitled32_20251221222716.png',
-            left: 'Untitled32_20251221221743.png',
-            right: 'Untitled32_20251221221738.png'
-        };
-
-        const jumpscares = [
-            'Untitled32_20251221223454.png', 
-            'Untitled32_20251221223705.png', 
-            'Untitled32_20251221223956.png', 
-            'Untitled32_20251221223315.png'
+        // Assets Mapping
+        const officeImg = 'Untitled32_20251221222716.png';
+        const officeL = 'Untitled32_20251221221743.png';
+        const officeR = 'Untitled32_20251221221738.png';
+        const jumpImages = [
+            'Untitled32_20251221223454.png', 'Untitled32_20251221223705.png',
+            'Untitled32_20251221223956.png', 'Untitled32_20251221223315.png'
         ];
 
-        const camImages = [
-            'Untitled31_20251221221402.png', 
-            'Untitled31_20251221220901.png', 
-            'Untitled31_20251221220956.png', 
-            'Cam2B.webp',
-            'EastHallNoCamera.webp',
-            'WestHallNoCamera.webp'
-        ];
+        let ventTimer = 25;
+        let gameActive = false;
+        let aiLevel = 5;
 
-        let currentCamIndex = 0;
-        let camsActive = false;
-
-        // Mobile Touch Support
-        function setLight(side) {
-            if (camsActive) return;
-            const url = officeStates[side] || officeStates.dark;
-            office.style.backgroundImage = `url('${url}')`;
+        // Navigation
+        function toggleSettings(show) {
+            document.getElementById('menu-screen').style.display = show ? 'none' : 'flex';
+            document.getElementById('settings-screen').style.display = show ? 'flex' : 'none';
         }
 
-        function cycleCams() {
-            if (!camsActive) {
-                camsActive = true;
-                camOverlay.style.display = 'block';
-            } else {
-                currentCamIndex++;
-                if (currentCamIndex >= camImages.length) {
-                    camsActive = false;
-                    camOverlay.style.display = 'none';
-                    currentCamIndex = 0;
-                    return;
-                }
-            }
-            camOverlay.style.backgroundImage = `url('${camImages[currentCamIndex]}')`;
+        function startGame() {
+            aiLevel = document.getElementById('ai-range').value;
+            document.getElementById('menu-screen').style.display = 'none';
+            document.getElementById('loading-screen').style.display = 'flex';
+            
+            setTimeout(() => {
+                document.getElementById('loading-screen').style.display = 'none';
+                document.getElementById('game-screen').style.display = 'block';
+                initGame();
+            }, 6000);
+        }
+
+        function initGame() {
+            gameActive = true;
+            document.getElementById('office').style.backgroundImage = `url('${officeImg}')`;
+            startVentilationClock();
+            startAI();
+        }
+
+        // Gameplay Mechanics
+        function setLight(side) {
+            const office = document.getElementById('office');
+            if (side === 'left') office.style.backgroundImage = `url('${officeL}')`;
+            else if (side === 'right') office.style.backgroundImage = `url('${officeR}')`;
+            else office.style.backgroundImage = `url('${officeImg}')`;
+        }
+
+        function toggleCams() {
+            const cam = document.getElementById('cam-view');
+            cam.style.display = (cam.style.display === 'block') ? 'none' : 'block';
         }
 
         function resetVent() {
-            console.log("Ventilation clear.");
+            ventTimer = 25;
+            document.getElementById('btn-vent').classList.remove('warning-red');
+            document.getElementById('btn-cams').classList.remove('warning-red');
         }
 
-        // Run this in console to test: triggerJumpscare()
-        function triggerJumpscare() {
-            const randomChar = jumpscares[Math.floor(Math.random() * jumpscares.length)];
-            jumpImg.src = randomChar;
-            jumpOverlay.style.display = 'block';
-            jumpImg.classList.add('shake-low-fps');
-            
-            scream.currentTime = 0;
-            scream.play();
+        function startVentilationClock() {
+            setInterval(() => {
+                if (!gameActive) return;
+                ventTimer--;
+                
+                // Signal Danger
+                if (ventTimer <= 10) {
+                    document.getElementById('btn-vent').classList.add('warning-red');
+                    document.getElementById('btn-cams').classList.add('warning-red');
+                }
 
-            setTimeout(() => {
-                jumpOverlay.style.display = 'none';
-                jumpImg.classList.remove('shake-low-fps');
-            }, 1200);
+                // Blackout if failed
+                if (ventTimer <= 0) {
+                    document.getElementById('office').style.filter = "brightness(0)";
+                } else {
+                    document.getElementById('office').style.filter = "brightness(1)";
+                }
+            }, 1000);
+        }
+
+        function startAI() {
+            setInterval(() => {
+                if (!gameActive) return;
+                // Simple chance logic based on AI range 1-20
+                if (Math.random() * 100 < aiLevel) {
+                    doJumpscare();
+                }
+            }, 5000);
+        }
+
+        function doJumpscare() {
+            gameActive = false;
+            const overlay = document.getElementById('jumpscare-overlay');
+            const img = document.getElementById('jumpscare-img');
+            const snd = document.getElementById('screamSfx');
+
+            img.src = jumpImages[Math.floor(Math.random() * jumpImages.length)];
+            snd.volume = document.getElementById('vol-range').value / 100;
+            
+            overlay.style.display = 'block';
+            snd.play();
+
+            setTimeout(() => { location.reload(); }, 2000);
         }
     </script>
 </body>
