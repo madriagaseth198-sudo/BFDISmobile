@@ -3,41 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BFDI: Night Shift - Final Logic</title>
+    <title>BFDI: Night Shift</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
-        :root { 
-            --neon: #00ff41; 
-            --noise-op: 0.60;
-            --tablet-speed: 0.5s cubic-bezier(0.1, 0.8, 0.2, 1);
-        }
-
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; margin: 0; padding: 0; }
+        :root { --neon: #00ff41; --noise-op: 0.60; --tablet-speed: 0.5s cubic-bezier(0.1, 0.8, 0.2, 1); }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; margin: 0; padding: 0; outline: none; }
         body, html { width: 100%; height: 100%; background: #000; overflow: hidden; font-family: 'Courier New', monospace; color: white; }
 
-        /* --- PRELOADER & SETUP --- */
-        #loading-screen { position: fixed; inset: 0; z-index: 10000; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .progress-bar { width: 300px; height: 10px; border: 1px solid var(--neon); margin-top: 20px; position: relative; }
-        #progress-fill { width: 0%; height: 100%; background: var(--neon); transition: width 0.3s; }
-
-        #setup-menu { position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #050505; transition: opacity 1s; }
-        .fade-out { opacity: 0; pointer-events: none; }
-        .fade-in { animation: fadeIn 1s forwards; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-        /* --- GAMEPLAY --- */
+        /* --- SCREENS --- */
+        .screen { position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000; }
         #game-view { display: none; width: 100vw; height: 100vh; position: relative; }
         #office { position: absolute; inset: 0; background-size: 100% 100%; z-index: 10; }
-        #noise { position: absolute; inset: 0; z-index: 45; pointer-events: none; opacity: var(--noise-op); mix-blend-mode: screen; }
-        .clock { position: absolute; top: 30px; left: 30px; z-index: 100; font-size: 5rem; font-weight: bold; }
-
-        /* --- UI BUTTONS --- */
-        .btn-ui { background: rgba(0,0,0,0.6); border: 2px solid #fff; color: white; padding: 20px; font-weight: bold; cursor: pointer; font-size: 1.2rem; outline: none; }
-        .btn-ui:active { background: #fff; color: #000; }
+        #noise { position: absolute; inset: 0; z-index: 45; pointer-events: none; opacity: var(--noise-op); mix-blend-mode: screen; transition: opacity 0.1s; }
         
-        #heater-btn { position: absolute; top: 30px; right: 30px; width: 180px; z-index: 100; border-color: #fff; }
-        #heater-btn.on { background: rgba(255, 69, 0, 0.6); border-color: #ff4500; color: #ff4500; }
-
+        /* --- UI --- */
+        .btn-ui { background: rgba(0,0,0,0.6); border: 2px solid #fff; color: white; padding: 20px; font-weight: bold; cursor: pointer; z-index: 100; transition: 0.2s; }
+        .btn-ui:hover { background: #fff; color: #000; }
+        #heater-btn { position: absolute; top: 30px; right: 30px; width: 180px; }
+        #heater-btn.on { background: rgba(255, 69, 0, 0.8); border-color: #ff4500; color: #fff; box-shadow: 0 0 20px #ff4500; }
         #tab-trigger { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 400px; z-index: 1500; border-color: var(--neon); color: var(--neon); }
 
         /* --- MONITOR --- */
@@ -46,41 +29,34 @@
         #cam-view { width: 95vw; height: 60vh; border: 6px solid #fff; background-size: 100% 100%; position: relative; background-color: #050505; }
         .cam-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 20px; width: 95vw; }
 
-        /* --- JUMPSCARE ANIMATION --- */
-        .js-layer { display: none; position: fixed; inset: 0; z-index: 10000; background: #000; overflow: hidden; }
-        #js-img { 
-            width: 110%; height: 110%; object-fit: cover; 
-            position: absolute; bottom: -100%; left: -5%;
-            transition: bottom 1s cubic-bezier(0.2, 0, 0.2, 1);
-        }
+        /* --- JUMPSCARE & DEFEAT --- */
+        #js-layer { display: none; position: fixed; inset: 0; z-index: 10000; background: #000; overflow: hidden; }
+        #js-img { width: 115%; height: 115%; object-fit: cover; position: absolute; bottom: -100%; left: -7.5%; transition: bottom 0.2s linear; }
         
-        /* Oscillate & Blur */
         .oscillate { animation: shake 0.1s infinite alternate, motionBlur 0.1s infinite; }
-        @keyframes shake { from { transform: translate(2px, 2px) rotate(0deg); } to { transform: translate(-2px, -2px) rotate(1deg); } }
-        @keyframes motionBlur { 0% { filter: blur(0px); } 50% { filter: blur(4px); transform: skewX(2deg); } 100% { filter: blur(0px); } }
+        @keyframes shake { from { transform: translate(4px, 4px) rotate(-1deg); } to { transform: translate(-4px, -4px) rotate(1deg); } }
+        @keyframes motionBlur { 0% { filter: blur(6px); transform: skewX(3deg); } 50% { filter: blur(0px); transform: skewX(0deg); } 100% { filter: blur(6px); transform: skewX(-3deg); } }
 
-        .slide-left { transition: left 1s cubic-bezier(0.2, 0, 0.2, 1) !important; bottom: -5% !important; left: -100% !important; }
-        .slide-left.active { left: -5% !important; }
+        #death-overlay { display: none; position: fixed; inset: 0; z-index: 11000; background: rgba(150, 0, 0, 0); transition: background 1.5s; }
+        
+        #defeat-screen { display: none; position: fixed; inset: 0; z-index: 12000; background: #000; flex-direction: column; align-items: center; justify-content: center; opacity: 0; transition: opacity 1s; }
+        .defeat-text { color: red; font-size: 8rem; font-weight: bold; animation: textShake 0.2s infinite; margin-bottom: 10px; }
+        .killed-by { color: #888; font-size: 2rem; margin-bottom: 40px; text-transform: uppercase; letter-spacing: 5px; }
+
+        @keyframes textShake { 0% { transform: translate(2px, 0); } 25% { transform: translate(-2px, 2px); } 50% { transform: translate(0, -2px); } 75% { transform: translate(2px, 2px); } 100% { transform: translate(-2px, 0); } }
     </style>
 </head>
 <body>
 
-    <div id="loading-screen" style="display:none;">
-        <h2 style="color:var(--neon)">PRELOADING ASSETS...</h2>
-        <div class="progress-bar"><div id="progress-fill"></div></div>
-    </div>
-
-    <div id="setup-menu">
-        <h1 style="color:red; font-size: 4rem; margin-bottom: 20px;">BFDI: NIGHT SHIFT</h1>
+    <div id="setup-menu" class="screen">
+        <h1 style="color:red; font-size: 3rem; margin-bottom: 20px;">BFDI: NIGHT SHIFT</h1>
         <input type="file" id="zip-in" style="margin-bottom: 20px; color:white;">
-        <div id="start-area" style="display:none;">
-            <button class="btn-ui" style="width:300px; color:var(--neon); border-color:var(--neon);" onclick="launchGame()">START GAME</button>
-        </div>
+        <button id="start-btn" class="btn-ui" style="display:none; color:var(--neon); border-color:var(--neon);" onclick="launch()">START NIGHT</button>
     </div>
 
     <div id="game-view">
-        <div class="clock" id="clock-txt">12 AM</div>
-        <button id="heater-btn" class="btn-ui" onmousedown="toggleHeater(true)" onmouseup="toggleHeater(false)" ontouchstart="toggleHeater(true)" ontouchend="toggleHeater(false)">HEATER</button>
+        <div style="position:absolute; top:30px; left:30px; z-index:100; font-size:4rem;" id="clock-txt">12 AM</div>
+        <button id="heater-btn" class="btn-ui" onmousedown="setHeat(true)" onmouseup="setHeat(false)" ontouchstart="setHeat(true)" ontouchend="setHeat(false)">HEATER</button>
         <canvas id="noise"></canvas>
         <div id="office"></div>
         
@@ -92,204 +68,171 @@
         <div id="tablet">
             <div id="cam-view"><div id="cam-tag" style="padding:10px; background:rgba(0,0,0,0.8); border:1px solid #fff; position:absolute; top:10px; left:10px;">CAM 1</div></div>
             <div class="cam-grid">
-                <button class="btn-ui" onclick="goCam('l','LEFT HALL')">CAM 1</button>
-                <button class="btn-ui" onclick="goCam('r','RIGHT HALL')">CAM 2</button>
-                <button class="btn-ui" onclick="goCam('s','SUPPLY CLOSET')">CAM 3</button>
-                <button class="btn-ui" onclick="goCam('p','PARTS/SERVICE')">CAM 4</button>
+                <button class="btn-ui" onclick="goCam('l','CAM 1')">CAM 1</button>
+                <button class="btn-ui" onclick="goCam('r','CAM 2')">CAM 2</button>
+                <button class="btn-ui" onclick="goCam('s','CAM 3')">CAM 3</button>
+                <button class="btn-ui" onclick="goCam('p','CAM 4')">CAM 4</button>
             </div>
         </div>
     </div>
 
-    <div id="js-layer" class="js-layer"><img id="js-img" src=""></div>
+    <div id="js-layer"><img id="js-img" src=""></div>
+    <div id="death-overlay"></div>
+    
+    <div id="defeat-screen">
+        <div class="defeat-text">DEFEAT</div>
+        <div id="killer-txt" class="killed-by">Killed by Unknown</div>
+        <button class="btn-ui" style="border-color:var(--neon); color:var(--neon); width:250px;" onclick="resetNight()">TRY AGAIN</button>
+    </div>
 
     <script>
-        let assets = {}, active = false, tab = false, cur = 'l', heater = false, heatTime = 0;
-        let clockSecs = 0, scPlayer = new Audio();
-        let state = {
-            f: { pos: 'hall', time: 0 }, // Firey
-            c: { time: 0 },             // Clock
-            m: { pos: 'closet', time: 0 }, // Marker
-            b: { pos: 'closet', time: 0 }, // Book
-            t: { pos: 'hall', time: 0 },   // Teardrop
-            g: { time: 0 },              // Gelatin
-            l: { active: false }         // Leafy
+        let assets = {}, active = false, tab = false, cur = 'l', heater = false, heatSecs = 0;
+        let clockSecs = 0, sc = new Audio(), camGlitch = false;
+        let aiInterval;
+        
+        let ai = {
+            f: { state: 'idle', t: 0 }, m: { state: 'closet', t: 0 },
+            b: { state: 'closet', t: 0 }, t: { state: 'idle', t: 0 },
+            g: { t: 0 }, c: { t: 0 }
         };
 
-        const ZIP = document.getElementById('zip-in');
-        ZIP.onchange = async (e) => {
-            document.getElementById('loading-screen').style.display = 'flex';
+        document.getElementById('zip-in').onchange = async (e) => {
             const zip = await JSZip.loadAsync(e.target.files[0]);
-            const files = Object.keys(zip.files);
-            let loaded = 0;
-
-            for (let f of files) {
-                if (f.endsWith('.png') || f.endsWith('.webp') || f.endsWith('.mp3')) {
-                    const blob = await zip.file(f).async("blob");
-                    assets[f] = URL.createObjectURL(blob);
-                }
-                loaded++;
-                document.getElementById('progress-fill').style.width = (loaded / files.length * 100) + '%';
+            for (let f in zip.files) {
+                const b = await zip.file(f).async("blob");
+                assets[f] = URL.createObjectURL(b);
             }
-            if (assets['JumpscareAudio.mp3']) scPlayer.src = assets['JumpscareAudio.mp3'];
-            document.getElementById('loading-screen').style.display = 'none';
-            document.getElementById('start-area').style.display = 'block';
+            if (assets['JumpscareAudio.mp3']) sc.src = assets['JumpscareAudio.mp3'];
+            document.getElementById('start-btn').style.display = 'block';
         };
 
-        function launchGame() {
+        function launch() {
             active = true;
-            document.getElementById('setup-menu').classList.add('fade-out');
+            document.getElementById('setup-menu').style.display = 'none';
+            document.getElementById('defeat-screen').style.display = 'none';
             document.getElementById('game-view').style.display = 'block';
-            document.getElementById('game-view').classList.add('fade-in');
             document.getElementById('office').style.backgroundImage = `url(${assets['Office.png']})`;
             
-            // AI Loop
-            setInterval(() => {
+            aiInterval = setInterval(() => {
                 if (!active) return;
                 clockSecs++;
                 document.getElementById('clock-txt').innerText = Math.floor(clockSecs/60) + " AM";
-                if(heater) heatTime++; else heatTime = 0;
-
-                // Firey Logic
-                if (state.f.pos === 'hall') {
-                    state.f.time++;
-                    if (state.f.time > 30) state.f.pos = 'near';
-                }
-
-                // Clock Logic
-                if (cur !== 'p' || !tab) state.c.time++;
-                else state.c.time = 0;
-                if (state.c.time > 30 && assets['PartsorServiceGameOver.webp']) {
-                    // Handled in renderCams
-                }
+                if(heater) heatSecs++; else heatSecs = 0;
 
                 // Marker Logic
-                if (state.m.pos === 'closet') {
-                    state.m.time++;
-                    if (state.m.time > 30) state.m.pos = 'hall';
+                if (ai.m.state === 'closet') {
+                    ai.m.t++; if(ai.m.t > 30) { ai.m.state = 'hall'; ai.m.t = 0; glitch(); }
                 }
-                if (state.m.pos === 'hall' && !heater) {
-                    state.m.time++;
-                    if (state.m.time > 50) triggerJS('MarkerJumpscare.png');
-                } else if (state.m.pos === 'hall' && heater && heatTime > 6) {
-                    state.m.pos = 'gone';
+                if (ai.m.state === 'hall') {
+                    if (heater && heatSecs >= 6) { ai.m.state = 'gone'; }
+                    else { ai.m.t++; if(ai.m.t > 40) triggerJS('MarkerJumpscare.png', 'Marker'); }
                 }
 
-                // Teardrop Logic
-                if (cur === 'l' && tab) {
-                    state.t.time++;
-                    if (state.t.time > 28 && !heater) {
-                        setTimeout(() => triggerJS('TeardropJumpscare.png', 'left'), 2000);
-                    }
+                // Gelatin Logic
+                ai.g.t++;
+                if (ai.g.t > 50) {
+                    if (heater && heatSecs >= 10) { ai.g.t = 0; }
+                    else triggerJS('GelatinJumpscare.png', 'Gelatin');
                 }
-
-                // Gelatin
-                state.g.time++;
-                if (state.g.time > 50 && (!heater || heatTime < 10)) triggerJS('GelatinJumpscare.png');
-
-                // Book
-                if (cur === 's' && tab) {
-                    state.b.time++;
-                    if (state.b.time > 30) state.b.pos = 'gone';
-                }
-                if (state.b.pos === 'gone') {
-                    state.b.time++;
-                    if (state.b.time > 5 && !rightLightOn) triggerJS('BookJumpscare.png');
-                }
-                
-                // Flower (Random)
-                if (Math.random() < 0.01) triggerJS('FlowerJumpscare.png');
-
             }, 1000);
-            renderCams();
             drawStatic();
+        }
+
+        function glitch() {
+            document.getElementById('noise').style.opacity = '1';
+            setTimeout(() => { document.getElementById('noise').style.opacity = '0.60'; renderCams(); }, 250);
         }
 
         function toggleTab() {
             tab = !tab;
             document.getElementById('tablet').classList.toggle('up', tab);
-            if (!tab) { 
-                // Delay clearing certain states when monitor put down
-            }
-            renderCams();
+            glitch();
         }
 
         function goCam(id, tag) {
             cur = id;
             document.getElementById('cam-tag').innerText = tag;
-            renderCams();
+            glitch();
         }
 
         function renderCams() {
             const v = document.getElementById('cam-view');
-            let img = assets['LeftHallEmpty.webp'];
-
+            let bg = assets['LeftHallEmpty.webp'];
             if (cur === 'l') {
-                img = assets['LeftHallEmpty.webp'];
-                if (state.f.pos === 'hall') img = assets['FireyLeftHall.png'];
-                if (state.f.pos === 'near') img = assets['FireyNearLeftHall.png'];
-                if (Math.random() < 0.8) img = assets['LeafyLeftHall.png']; // Leafy Priority
-            } else if (cur === 'r') {
-                img = assets['RightHallEmpty.webp'];
-                if (state.m.pos === 'hall') img = assets['MarkerRightHall.png'];
-                if (state.g.time > 10) img = assets['GelatinRightHall.png'];
-            } else if (cur === 's') {
-                img = assets['SupplyClosetEmpty.webp'];
-                if (state.m.pos === 'closet') img = assets['SupplyClosetMarker.png'];
-                if (state.b.pos === 'closet') img = assets['BookSupplyCloset.png'];
-            } else if (cur === 'p') {
-                img = assets['ClockPartsorService.png'];
-                if (state.c.time > 30) {
-                    img = assets['PartsorServiceGameOver.webp'];
-                    setTimeout(() => { if(state.c.time > 30) triggerJS('ClockJumpscare.png'); }, 4000);
-                }
+                let rng = Math.random() * 100;
+                if (rng < 50) bg = assets['LeftHallEmpty.webp'];
+                else if (rng < 75) bg = assets['FireyLeftHall.png'];
+                else if (rng < 95) bg = assets['LeafyLeftHall.png'];
+                else bg = assets['LeafyandFireyLeftHall.png'];
+            } 
+            else if (cur === 'r') {
+                bg = assets['RightHallEmpty.webp'];
+                if (ai.m.state === 'hall') bg = assets['MarkerRightHall.png'];
+                if (ai.g.t > 15) bg = assets['GelatinRightHall.png'];
             }
-            v.style.backgroundImage = `url(${img})`;
+            else if (cur === 's') {
+                bg = assets['SupplyClosetEmpty.webp'];
+                if (ai.m.state === 'closet') bg = assets['SupplyClosetMarker.png'];
+            }
+            v.style.backgroundImage = `url(${bg})`;
         }
 
-        let rightLightOn = false;
         function lt(side, on) {
             if (tab) return;
-            const off = document.getElementById('office');
-            if (side === 'r') rightLightOn = on;
-            
-            let bg = assets['Office.png'];
-            if (on) bg = assets[side === 'l' ? 'OfficeLeftLight.png' : 'OfficeRightLight.png'];
-            
-            // Firey Logic at Door
-            if (side === 'l' && on && state.f.pos === 'near') {
-                bg = assets['FireyLeftwithLight.png'];
-                setTimeout(() => triggerJS('FireyJumpscare.png'), 2000);
-            }
-            
-            off.style.backgroundImage = `url(${bg})`;
+            let img = assets[on ? (side === 'l' ? 'OfficeLeftLight.png' : 'OfficeRightLight.png') : 'Office.png'];
+            document.getElementById('office').style.backgroundImage = `url(${img})`;
         }
 
-        function toggleHeater(on) {
-            heater = on;
-            document.getElementById('heater-btn').classList.toggle('on', on);
-        }
+        function setHeat(on) { heater = on; document.getElementById('heater-btn').classList.toggle('on', on); }
 
-        function triggerJS(file, dir = 'up') {
+        function triggerJS(file, name) {
             if (!active) return;
             active = false;
-            // Force monitor down
+            clearInterval(aiInterval);
             document.getElementById('tablet').classList.remove('up');
             
-            const layer = document.getElementById('js-layer');
-            const img = document.getElementById('js-img');
-            layer.style.display = 'block';
-            img.src = assets[file];
-            img.classList.add('oscillate');
-            
-            if (dir === 'left') {
-                img.classList.add('slide-left');
-                setTimeout(() => img.classList.add('active'), 100);
-            } else {
-                setTimeout(() => img.style.bottom = '0', 100);
-            }
+            const jsLayer = document.getElementById('js-layer');
+            const jsImg = document.getElementById('js-img');
+            jsLayer.style.display = 'block';
+            jsImg.src = assets[file];
+            jsImg.classList.add('oscillate');
+            if (sc.src) sc.play();
 
-            if (scPlayer.src) scPlayer.play();
-            setTimeout(() => location.reload(), 4000);
+            setTimeout(() => { jsImg.style.bottom = '0'; }, 50);
+
+            // Red Death Sequence
+            setTimeout(() => {
+                const overlay = document.getElementById('death-overlay');
+                overlay.style.display = 'block';
+                setTimeout(() => { overlay.style.background = 'rgba(200, 0, 0, 0.8)'; }, 100);
+                
+                setTimeout(() => {
+                    document.getElementById('killer-txt').innerText = "Killed by " + name;
+                    const ds = document.getElementById('defeat-screen');
+                    ds.style.display = 'flex';
+                    setTimeout(() => ds.style.opacity = '1', 50);
+                }, 1500);
+            }, 1000);
+        }
+
+        function resetNight() {
+            // Reset Data
+            clockSecs = 0;
+            heatSecs = 0;
+            ai = {
+                f: { state: 'idle', t: 0 }, m: { state: 'closet', t: 0 },
+                b: { state: 'closet', t: 0 }, t: { state: 'idle', t: 0 },
+                g: { t: 0 }, c: { t: 0 }
+            };
+            
+            // UI Reset
+            document.getElementById('js-layer').style.display = 'none';
+            document.getElementById('death-overlay').style.display = 'none';
+            document.getElementById('death-overlay').style.background = 'rgba(150, 0, 0, 0)';
+            document.getElementById('js-img').style.bottom = '-100%';
+            document.getElementById('js-img').classList.remove('oscillate');
+            
+            launch();
         }
 
         function drawStatic() {
@@ -305,4 +248,4 @@
         }
     </script>
 </body>
-</html>
+    </html>
