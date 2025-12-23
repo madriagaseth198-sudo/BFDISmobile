@@ -3,337 +3,306 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BFDI's Night Shift</title>
+    <title>BFDI: Night Shift - Final Logic</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
-        :root { --osc-strength: 8px; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: black; overflow: hidden; font-family: 'Courier New', monospace; color: white; }
+        :root { 
+            --neon: #00ff41; 
+            --noise-op: 0.60;
+            --tablet-speed: 0.5s cubic-bezier(0.1, 0.8, 0.2, 1);
+        }
 
-        /* --- UI LAYERS --- */
-        #loading-screen { position: absolute; inset: 0; background: #000; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        #game-view { position: relative; width: 100vw; height: 100vh; display: none; opacity: 0; transition: opacity 2s; }
-        #office { width: 100%; height: 100%; background-size: cover; background-position: center; transition: filter 0.1s; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; margin: 0; padding: 0; }
+        body, html { width: 100%; height: 100%; background: #000; overflow: hidden; font-family: 'Courier New', monospace; color: white; }
+
+        /* --- PRELOADER & SETUP --- */
+        #loading-screen { position: fixed; inset: 0; z-index: 10000; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .progress-bar { width: 300px; height: 10px; border: 1px solid var(--neon); margin-top: 20px; position: relative; }
+        #progress-fill { width: 0%; height: 100%; background: var(--neon); transition: width 0.3s; }
+
+        #setup-menu { position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #050505; transition: opacity 1s; }
+        .fade-out { opacity: 0; pointer-events: none; }
+        .fade-in { animation: fadeIn 1s forwards; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* --- GAMEPLAY --- */
+        #game-view { display: none; width: 100vw; height: 100vh; position: relative; }
+        #office { position: absolute; inset: 0; background-size: 100% 100%; z-index: 10; }
+        #noise { position: absolute; inset: 0; z-index: 45; pointer-events: none; opacity: var(--noise-op); mix-blend-mode: screen; }
+        .clock { position: absolute; top: 30px; left: 30px; z-index: 100; font-size: 5rem; font-weight: bold; }
+
+        /* --- UI BUTTONS --- */
+        .btn-ui { background: rgba(0,0,0,0.6); border: 2px solid #fff; color: white; padding: 20px; font-weight: bold; cursor: pointer; font-size: 1.2rem; outline: none; }
+        .btn-ui:active { background: #fff; color: #000; }
         
-        /* --- NOISE CANVAS (The Glitch Effect) --- */
-        #noise { 
-            position: absolute; inset: 0; z-index: 9000; pointer-events: none; 
-            opacity: 0.25; /* Default Opacity */
-            mix-blend-mode: screen; 
-            transition: opacity 0.1s; /* Fast transition for the glitch */
-        }
+        #heater-btn { position: absolute; top: 30px; right: 30px; width: 180px; z-index: 100; border-color: #fff; }
+        #heater-btn.on { background: rgba(255, 69, 0, 0.6); border-color: #ff4500; color: #ff4500; }
 
-        /* --- BUTTONS --- */
-        .ui-btn { 
-            position: absolute; background: rgba(0,0,0,0.5); border: 2px solid white; color: white; 
-            padding: 15px; font-weight: bold; border-radius: 4px; cursor: pointer; z-index: 50;
-            font-size: 1rem;
-        }
-        .ui-btn:active { background: rgba(255,255,255,0.3); }
-        #btn-l { left: 20px; bottom: 40%; }
-        #btn-r { right: 20px; bottom: 40%; }
-        #btn-heater { top: 20px; right: 20px; border-style: dashed; border-color: red; color: red; }
-        #btn-heater.active { background: red; color: black; }
-        #btn-cam-toggle { bottom: 20px; left: 50%; transform: translateX(-50%); width: 250px; }
+        #tab-trigger { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 400px; z-index: 1500; border-color: var(--neon); color: var(--neon); }
 
         /* --- MONITOR --- */
-        #monitor { 
-            position: absolute; left: 0; width: 100%; height: 100%; bottom: -110%;
-            background: rgba(0,0,0,0.95); z-index: 1000; transition: bottom 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
-        #monitor.active { bottom: 0; }
-        #cam-viewport { width: 85vw; height: 55vh; border: 3px solid #fff; background-size: cover; background-position: center; position: relative; margin-bottom: 15px; }
-        .cam-map { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 90vw; }
-        .cam-btn { padding: 10px; background: #222; border: 1px solid #555; color: #fff; }
-        .cam-btn.selected { border-color: #0f0; color: #0f0; }
+        #tablet { position: absolute; inset: 0; background: #000; z-index: 700; display: flex; flex-direction: column; align-items: center; justify-content: center; transform: translateY(105%); transition: transform var(--tablet-speed); }
+        #tablet.up { transform: translateY(0%); }
+        #cam-view { width: 95vw; height: 60vh; border: 6px solid #fff; background-size: 100% 100%; position: relative; background-color: #050505; }
+        .cam-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 20px; width: 95vw; }
 
-        /* --- JUMPSCARES --- */
-        #js-container { display: none; position: absolute; inset: 0; z-index: 9500; overflow: hidden; pointer-events: none; }
-        #js-img { position: absolute; width: 100%; height: 100%; object-fit: contain; }
-        
-        /* Slide Up (Standard) */
-        .anim-up { animation: slideUp 1s cubic-bezier(0.1, 0.9, 0.2, 1) forwards, oscillate 0.05s infinite; filter: blur(5px); }
-        @keyframes slideUp { 0% { bottom: -100%; filter: blur(20px) skewY(10deg); } 100% { bottom: 0; filter: blur(0px) skewY(0deg); } }
-        
-        /* Slide Left (Teardrop) */
-        .anim-left { animation: slideLeft 1s cubic-bezier(0.1, 0.9, 0.2, 1) forwards, oscillate 0.05s infinite; }
-        @keyframes slideLeft { 0% { left: -100%; filter: blur(20px) skewX(-10deg); } 100% { left: 0; filter: blur(0px) skewX(0deg); } }
-
-        @keyframes oscillate { 
-            0% { transform: translate(var(--osc-strength), var(--osc-strength)); }
-            25% { transform: translate(calc(var(--osc-strength) * -1), var(--osc-strength)); }
-            50% { transform: translate(calc(var(--osc-strength) * -1), calc(var(--osc-strength) * -1)); }
-            75% { transform: translate(var(--osc-strength), calc(var(--osc-strength) * -1)); }
-            100% { transform: translate(var(--osc-strength), var(--osc-strength)); }
+        /* --- JUMPSCARE ANIMATION --- */
+        .js-layer { display: none; position: fixed; inset: 0; z-index: 10000; background: #000; overflow: hidden; }
+        #js-img { 
+            width: 110%; height: 110%; object-fit: cover; 
+            position: absolute; bottom: -100%; left: -5%;
+            transition: bottom 1s cubic-bezier(0.2, 0, 0.2, 1);
         }
+        
+        /* Oscillate & Blur */
+        .oscillate { animation: shake 0.1s infinite alternate, motionBlur 0.1s infinite; }
+        @keyframes shake { from { transform: translate(2px, 2px) rotate(0deg); } to { transform: translate(-2px, -2px) rotate(1deg); } }
+        @keyframes motionBlur { 0% { filter: blur(0px); } 50% { filter: blur(4px); transform: skewX(2deg); } 100% { filter: blur(0px); } }
+
+        .slide-left { transition: left 1s cubic-bezier(0.2, 0, 0.2, 1) !important; bottom: -5% !important; left: -100% !important; }
+        .slide-left.active { left: -5% !important; }
     </style>
 </head>
 <body>
 
-    <div id="loading-screen">
-        <h1 style="color:red; font-size: 2rem;">BFDI'S NIGHT SHIFT</h1>
-        <p>Please upload <b>assets.zip</b></p>
-        <input type="file" id="zip-input" accept=".zip" style="color:white;">
-        <p id="status" style="margin-top:20px; font-size: 0.8rem; color: #888;">Waiting for file...</p>
+    <div id="loading-screen" style="display:none;">
+        <h2 style="color:var(--neon)">PRELOADING ASSETS...</h2>
+        <div class="progress-bar"><div id="progress-fill"></div></div>
+    </div>
+
+    <div id="setup-menu">
+        <h1 style="color:red; font-size: 4rem; margin-bottom: 20px;">BFDI: NIGHT SHIFT</h1>
+        <input type="file" id="zip-in" style="margin-bottom: 20px; color:white;">
+        <div id="start-area" style="display:none;">
+            <button class="btn-ui" style="width:300px; color:var(--neon); border-color:var(--neon);" onclick="launchGame()">START GAME</button>
+        </div>
     </div>
 
     <div id="game-view">
+        <div class="clock" id="clock-txt">12 AM</div>
+        <button id="heater-btn" class="btn-ui" onmousedown="toggleHeater(true)" onmouseup="toggleHeater(false)" ontouchstart="toggleHeater(true)" ontouchend="toggleHeater(false)">HEATER</button>
         <canvas id="noise"></canvas>
         <div id="office"></div>
-        <div style="position:absolute; top:15px; left:20px; font-size:1.5rem; z-index:60;" id="clock-display">12 AM</div>
         
-        <button id="btn-l" class="ui-btn" ontouchstart="light('l',true)" ontouchend="light('l',false)" onmousedown="light('l',true)" onmouseup="light('l',false)">LIGHT L</button>
-        <button id="btn-r" class="ui-btn" ontouchstart="light('r',true)" ontouchend="light('r',false)" onmousedown="light('r',true)" onmouseup="light('r',false)">LIGHT R</button>
-        <button id="btn-heater" class="ui-btn" ontouchstart="heater(true)" ontouchend="heater(false)" onmousedown="heater(true)" onmouseup="heater(false)">HEATER</button>
-        <button id="btn-cam-toggle" class="ui-btn" onclick="toggleMonitor()">MONITOR</button>
+        <button class="btn-ui" style="position:absolute; left:30px; bottom:38%; width:150px;" onmousedown="lt('l',true)" onmouseup="lt('l',false)">LIGHT L</button>
+        <button class="btn-ui" style="position:absolute; right:30px; bottom:38%; width:150px;" onmousedown="lt('r',true)" onmouseup="lt('r',false)">LIGHT R</button>
+        
+        <button id="tab-trigger" class="btn-ui" onclick="toggleTab()">MONITOR</button>
 
-        <div id="monitor">
-            <div id="cam-viewport">
-                <div style="position:absolute; top:10px; left:10px; background:black; padding:5px; border:1px solid white;" id="cam-name">CAM 01</div>
-            </div>
-            <div class="cam-map">
-                <button class="cam-btn" onclick="setCam('left', 'Left Hall', this)">LEFT HALL</button>
-                <button class="cam-btn" onclick="setCam('right', 'Right Hall', this)">RIGHT HALL</button>
-                <button class="cam-btn" onclick="setCam('closet', 'Supply Closet', this)">SUPPLY CLOSET</button>
-                <button class="cam-btn" onclick="setCam('parts', 'Parts/Service', this)">PARTS/SERVICE</button>
+        <div id="tablet">
+            <div id="cam-view"><div id="cam-tag" style="padding:10px; background:rgba(0,0,0,0.8); border:1px solid #fff; position:absolute; top:10px; left:10px;">CAM 1</div></div>
+            <div class="cam-grid">
+                <button class="btn-ui" onclick="goCam('l','LEFT HALL')">CAM 1</button>
+                <button class="btn-ui" onclick="goCam('r','RIGHT HALL')">CAM 2</button>
+                <button class="btn-ui" onclick="goCam('s','SUPPLY CLOSET')">CAM 3</button>
+                <button class="btn-ui" onclick="goCam('p','PARTS/SERVICE')">CAM 4</button>
             </div>
         </div>
-
-        <div id="js-container"><img id="js-img" src=""></div>
     </div>
 
+    <div id="js-layer" class="js-layer"><img id="js-img" src=""></div>
+
     <script>
-        // --- ASSET MAPPING ---
-        const zipMap = {
-            off: "Office.png", offL: "OfficeLeftLight.png", offR: "OfficeRightLight.png",
-            fLight: "FireyLeftwithLight.png", fHall: "FireyLeftHall.png", fDoor: "FireyNearLeftHallDoor.png", fJS: "FireyJumpscare.png",
-            cParts: "ClockPartsorService.png", cDanger: "PartsorServiceGameOver.webp", cJS: "ClockJumpscare.png",
-            rEmpty: "RightHallEmpty.webp", lEmpty: "LeftHallEmpty.webp", mHall: "MarkerRightHall.png",
-            mCloset: "SupplyClosetMarker.png", mJS: "MarkerJumpscare.png", clEmpty: "SupplyClosetEmpty.webp",
-            tdHall: "TeardropLeftHall.png", tdRun: "TeardropRun.png", tdJS: "TeardropJumpscare.png",
-            bCloset: "BookSupplyCloset.png", bJS: "BookJumpscare.png", gHall: "GelatinRightHall.png",
-            gJS: "GelatinJumpscare.png", lHall: "LeafyLeftHall.png", lJS: "LeafyJumpscare.png",
-            lfHall: "LeafyandFireyLeftHall.png", flJS: "FlowerJumpscare.png", sfx: "JumpscareAudio.mp3"
+        let assets = {}, active = false, tab = false, cur = 'l', heater = false, heatTime = 0;
+        let clockSecs = 0, scPlayer = new Audio();
+        let state = {
+            f: { pos: 'hall', time: 0 }, // Firey
+            c: { time: 0 },             // Clock
+            m: { pos: 'closet', time: 0 }, // Marker
+            b: { pos: 'closet', time: 0 }, // Book
+            t: { pos: 'hall', time: 0 },   // Teardrop
+            g: { time: 0 },              // Gelatin
+            l: { active: false }         // Leafy
         };
 
-        let assets = {};
-        let sc = new Audio();
-        let active = false, mon = false, heat = false;
-        let curCam = 'left';
-        let hour = 0;
+        const ZIP = document.getElementById('zip-in');
+        ZIP.onchange = async (e) => {
+            document.getElementById('loading-screen').style.display = 'flex';
+            const zip = await JSZip.loadAsync(e.target.files[0]);
+            const files = Object.keys(zip.files);
+            let loaded = 0;
 
-        // --- AI VARIABLES ---
-        let clockState = 0; // 0=Safe, 1=Gone, 2=Danger
-        let markerLoc = 0; // 0=Closet, 1=RightHall
-        let markerTimer = 0;
-        let bookActive = false;
-        let tdState = 0; // 0=Hall, 1=Run
-        let fireyState = 0; // 0=Hall, 1=NearDoor
-
-        // --- PRELOADER ---
-        document.getElementById('zip-input').addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if(!file) return;
-            
-            document.getElementById('status').innerText = "Unpacking Assets...";
-            const zip = await JSZip.loadAsync(file);
-            
-            for(let [key, name] of Object.entries(zipMap)) {
-                const f = zip.file(name);
-                if(f) {
-                    const b = await f.async("blob");
-                    assets[key] = URL.createObjectURL(b);
-                } else {
-                    console.warn("Missing file:", name);
+            for (let f of files) {
+                if (f.endsWith('.png') || f.endsWith('.webp') || f.endsWith('.mp3')) {
+                    const blob = await zip.file(f).async("blob");
+                    assets[f] = URL.createObjectURL(blob);
                 }
+                loaded++;
+                document.getElementById('progress-fill').style.width = (loaded / files.length * 100) + '%';
             }
-            
-            if(assets.sfx) sc.src = assets.sfx;
-
-            document.getElementById('status').innerText = "Done! Starting...";
-            setTimeout(startGame, 1000);
-        });
-
-        function startGame() {
+            if (assets['JumpscareAudio.mp3']) scPlayer.src = assets['JumpscareAudio.mp3'];
             document.getElementById('loading-screen').style.display = 'none';
-            document.getElementById('game-view').style.display = 'block';
-            setTimeout(() => document.getElementById('game-view').style.opacity = 1, 100);
-            
-            document.getElementById('office').style.backgroundImage = `url('${assets.off}')`;
+            document.getElementById('start-area').style.display = 'block';
+        };
+
+        function launchGame() {
             active = true;
+            document.getElementById('setup-menu').classList.add('fade-out');
+            document.getElementById('game-view').style.display = 'block';
+            document.getElementById('game-view').classList.add('fade-in');
+            document.getElementById('office').style.backgroundImage = `url(${assets['Office.png']})`;
             
-            noise();
-            startAI();
-            startClock();
-        }
-
-        // --- GAMEPLAY CONTROLS ---
-        function toggleMonitor() {
-            if(!active) return;
-            mon = !mon;
-            document.getElementById('monitor').classList.toggle('active', mon);
-            if(mon) updateCam();
-        }
-
-        function setCam(c, name, btn) {
-            curCam = c;
-            document.getElementById('cam-name').innerText = name;
-            document.querySelectorAll('.cam-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
-            updateCam();
-            
-            // Clock Logic: Leaving camera logic
-            if(c !== 'parts' && clockState === 0) {
-                // Logic handled in AI Loop
-            }
-        }
-
-        function light(s, on) {
-            if(mon || !active) return;
-            if(!on) { document.getElementById('office').style.backgroundImage = `url('${assets.off}')`; return; }
-            
-            // Firey Logic
-            if(s === 'l' && fireyState === 1) {
-                document.getElementById('office').style.backgroundImage = `url('${assets.fLight}')`;
-                setTimeout(() => doJumpscare('f'), 2000); // 2s delay then death
-            } else {
-                document.getElementById('office').style.backgroundImage = `url('${s==='l' ? assets.offL : assets.offR}')`;
-            }
-        }
-
-        function heater(on) {
-            heat = on;
-            const btn = document.getElementById('btn-heater');
-            if(on) btn.classList.add('active');
-            else btn.classList.remove('active');
-        }
-
-        // --- VISUALS ---
-        function updateCam() {
-            const v = document.getElementById('cam-viewport');
-            let img = assets.lEmpty;
-
-            if(curCam === 'left') {
-                if(fireyState === 0) img = assets.fHall; // Medium chance logic to be added
-                else if(tdState === 0) img = assets.tdHall; 
-                else if(tdState === 1) img = assets.tdRun;
-                else img = assets.lEmpty;
-            } 
-            else if (curCam === 'right') {
-                img = (markerLoc === 1) ? assets.mHall : assets.rEmpty;
-            }
-            else if (curCam === 'closet') {
-                img = (markerLoc === 0) ? assets.mCloset : assets.clEmpty;
-                if(bookActive) img = assets.bCloset;
-            }
-            else if (curCam === 'parts') {
-                img = (clockState === 2) ? assets.cDanger : assets.cParts;
-            }
-
-            v.style.backgroundImage = `url('${img}')`;
-        }
-
-        // --- GLITCH EFFECT ---
-        function triggerGlitch() {
-            const n = document.getElementById('noise');
-            n.style.opacity = '1'; // MAX OPACITY
-            setTimeout(() => {
-                n.style.opacity = '0.25'; // RESTORE AFTER 1s
-            }, 1000);
-        }
-
-        // --- AI LOGIC LOOP ---
-        function startAI() {
-            // Teardrop Logic
+            // AI Loop
             setInterval(() => {
-                if(!active) return;
-                // Simplified: If in left hall for too long
-                if(Math.random() < 0.2) {
-                    tdState = 1; // Run Phase
-                    if(mon && curCam === 'left') {
-                        updateCam(); // Show Run Image
-                        setTimeout(() => {
-                            triggerGlitch();
-                            setTimeout(() => {
-                                if(!heat) doJumpscare('td'); // Jumpscare if heater off
-                            }, 1000);
-                        }, 2000);
+                if (!active) return;
+                clockSecs++;
+                document.getElementById('clock-txt').innerText = Math.floor(clockSecs/60) + " AM";
+                if(heater) heatTime++; else heatTime = 0;
+
+                // Firey Logic
+                if (state.f.pos === 'hall') {
+                    state.f.time++;
+                    if (state.f.time > 30) state.f.pos = 'near';
+                }
+
+                // Clock Logic
+                if (cur !== 'p' || !tab) state.c.time++;
+                else state.c.time = 0;
+                if (state.c.time > 30 && assets['PartsorServiceGameOver.webp']) {
+                    // Handled in renderCams
+                }
+
+                // Marker Logic
+                if (state.m.pos === 'closet') {
+                    state.m.time++;
+                    if (state.m.time > 30) state.m.pos = 'hall';
+                }
+                if (state.m.pos === 'hall' && !heater) {
+                    state.m.time++;
+                    if (state.m.time > 50) triggerJS('MarkerJumpscare.png');
+                } else if (state.m.pos === 'hall' && heater && heatTime > 6) {
+                    state.m.pos = 'gone';
+                }
+
+                // Teardrop Logic
+                if (cur === 'l' && tab) {
+                    state.t.time++;
+                    if (state.t.time > 28 && !heater) {
+                        setTimeout(() => triggerJS('TeardropJumpscare.png', 'left'), 2000);
                     }
                 }
-            }, 10000);
 
-            // Clock Logic
-            setInterval(() => {
-                if(!active) return;
-                if(curCam === 'parts' && mon) {
-                    // Watching...
-                } else {
-                    // Not watching for 30s logic handled here
-                    if(Math.random() < 0.1) clockState = 2; // Danger Mode
+                // Gelatin
+                state.g.time++;
+                if (state.g.time > 50 && (!heater || heatTime < 10)) triggerJS('GelatinJumpscare.png');
+
+                // Book
+                if (cur === 's' && tab) {
+                    state.b.time++;
+                    if (state.b.time > 30) state.b.pos = 'gone';
+                }
+                if (state.b.pos === 'gone') {
+                    state.b.time++;
+                    if (state.b.time > 5 && !rightLightOn) triggerJS('BookJumpscare.png');
                 }
                 
-                if(clockState === 2 && curCam === 'parts' && mon) {
-                    // Player saw danger
-                    setTimeout(() => doJumpscare('c'), 4000);
-                }
-            }, 5000);
+                // Flower (Random)
+                if (Math.random() < 0.01) triggerJS('FlowerJumpscare.png');
+
+            }, 1000);
+            renderCams();
+            drawStatic();
         }
 
-        function startClock() {
-            setInterval(() => {
-                if(!active) return;
-                hour++;
-                if(hour === 6) {
-                    active = false;
-                    document.getElementById('loading-screen').style.display = 'flex';
-                    document.getElementById('loading-screen').innerHTML = "<h1 style='color:green; font-size:4rem'>6 AM</h1>";
-                }
-                document.getElementById('clock-display').innerText = hour + " AM";
-            }, 60000); // 1 minute = 1 hour
+        function toggleTab() {
+            tab = !tab;
+            document.getElementById('tablet').classList.toggle('up', tab);
+            if (!tab) { 
+                // Delay clearing certain states when monitor put down
+            }
+            renderCams();
         }
 
-        function doJumpscare(char) {
-            if(!active) return;
+        function goCam(id, tag) {
+            cur = id;
+            document.getElementById('cam-tag').innerText = tag;
+            renderCams();
+        }
+
+        function renderCams() {
+            const v = document.getElementById('cam-view');
+            let img = assets['LeftHallEmpty.webp'];
+
+            if (cur === 'l') {
+                img = assets['LeftHallEmpty.webp'];
+                if (state.f.pos === 'hall') img = assets['FireyLeftHall.png'];
+                if (state.f.pos === 'near') img = assets['FireyNearLeftHall.png'];
+                if (Math.random() < 0.8) img = assets['LeafyLeftHall.png']; // Leafy Priority
+            } else if (cur === 'r') {
+                img = assets['RightHallEmpty.webp'];
+                if (state.m.pos === 'hall') img = assets['MarkerRightHall.png'];
+                if (state.g.time > 10) img = assets['GelatinRightHall.png'];
+            } else if (cur === 's') {
+                img = assets['SupplyClosetEmpty.webp'];
+                if (state.m.pos === 'closet') img = assets['SupplyClosetMarker.png'];
+                if (state.b.pos === 'closet') img = assets['BookSupplyCloset.png'];
+            } else if (cur === 'p') {
+                img = assets['ClockPartsorService.png'];
+                if (state.c.time > 30) {
+                    img = assets['PartsorServiceGameOver.webp'];
+                    setTimeout(() => { if(state.c.time > 30) triggerJS('ClockJumpscare.png'); }, 4000);
+                }
+            }
+            v.style.backgroundImage = `url(${img})`;
+        }
+
+        let rightLightOn = false;
+        function lt(side, on) {
+            if (tab) return;
+            const off = document.getElementById('office');
+            if (side === 'r') rightLightOn = on;
+            
+            let bg = assets['Office.png'];
+            if (on) bg = assets[side === 'l' ? 'OfficeLeftLight.png' : 'OfficeRightLight.png'];
+            
+            // Firey Logic at Door
+            if (side === 'l' && on && state.f.pos === 'near') {
+                bg = assets['FireyLeftwithLight.png'];
+                setTimeout(() => triggerJS('FireyJumpscare.png'), 2000);
+            }
+            
+            off.style.backgroundImage = `url(${bg})`;
+        }
+
+        function toggleHeater(on) {
+            heater = on;
+            document.getElementById('heater-btn').classList.toggle('on', on);
+        }
+
+        function triggerJS(file, dir = 'up') {
+            if (!active) return;
             active = false;
-            mon = false; 
-            document.getElementById('monitor').classList.remove('active');
+            // Force monitor down
+            document.getElementById('tablet').classList.remove('up');
             
-            const c = document.getElementById('js-container');
-            const i = document.getElementById('js-img');
+            const layer = document.getElementById('js-layer');
+            const img = document.getElementById('js-img');
+            layer.style.display = 'block';
+            img.src = assets[file];
+            img.classList.add('oscillate');
             
-            // Map char code to asset
-            i.src = assets[char+'JS'] || assets.fJS;
-            
-            c.style.display = 'block';
-            
-            // Apply specific animations
-            if(char === 'td') i.className = 'anim-left'; // Teardrop Slides Left
-            else i.className = 'anim-up'; // Standard Slide Up
-            
-            sc.loop = true;
-            sc.currentTime = 0;
-            sc.play();
-            
-            setTimeout(() => location.reload(), 3500);
+            if (dir === 'left') {
+                img.classList.add('slide-left');
+                setTimeout(() => img.classList.add('active'), 100);
+            } else {
+                setTimeout(() => img.style.bottom = '0', 100);
+            }
+
+            if (scPlayer.src) scPlayer.play();
+            setTimeout(() => location.reload(), 4000);
         }
 
-        function noise() {
-            const c = document.getElementById('noise'), x = c.getContext('2d');
-            const resize = () => { c.width = window.innerWidth/4; c.height = window.innerHeight/4; };
-            window.addEventListener('resize', resize); resize();
-            
-            const loop = () => {
-                const id = x.createImageData(c.width, c.height);
-                const d = new Uint32Array(id.data.buffer);
-                for(let i=0; i<d.length; i++) {
-                    // Random static
-                    d[i] = (Math.random() < 0.5) ? 0xFF000000 : 0x00000000; 
-                }
-                x.putImageData(id, 0, 0);
+        function drawStatic() {
+            const c = document.getElementById('noise'), ctx = c.getContext('2d');
+            c.width = window.innerWidth; c.height = window.innerHeight;
+            function loop() {
+                if (!active) return;
+                const d = ctx.createImageData(c.width, c.height), b = new Uint32Array(d.data.buffer);
+                for (let i=0; i<b.length; i++) b[i] = Math.random() < 0.5 ? 0x25FFFFFF : 0;
+                ctx.putImageData(d, 0, 0);
                 requestAnimationFrame(loop);
-            }; loop();
+            } loop();
         }
     </script>
 </body>
-    </html>
+</html>
