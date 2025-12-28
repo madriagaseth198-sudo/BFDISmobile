@@ -2,296 +2,278 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>BFDI: Ultimate Custom Night</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BFDI Ultimate Custom Night</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Vt323&display=swap');
-        body { margin: 0; background: #000; color: #fff; font-family: 'Vt323', monospace; overflow: hidden; user-select: none; }
-        #game-container { position: relative; width: 100vw; height: 100vh; background: #000; }
+        body { margin: 0; background: #000; color: #fff; font-family: 'Vt323', monospace; overflow: hidden; }
+        #game-container { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+        .screen { position: absolute; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; background: #111; z-index: 10; }
+        .active { display: flex; }
         
-        /* Office Views */
+        /* Office & Visuals */
         #office-view { position: absolute; width: 100%; height: 100%; background-size: cover; background-position: center; z-index: 1; }
-        #monitor-overlay { position: absolute; width: 100%; height: 100%; background: #000; z-index: 30; display: none; border: 10px solid #222; box-sizing: border-box; }
+        #monitor-overlay { position: absolute; width: 100%; height: 100%; background: #000; z-index: 30; display: none; border: 10px solid #333; box-sizing: border-box; }
         #cam-feed { width: 100%; height: 100%; background-size: contain; background-repeat: no-repeat; background-position: center; }
 
-        /* UCN UI Elements */
-        .hud-btn { position: absolute; background: rgba(0,0,0,0.6); border: 2px solid #fff; color: #fff; font-family: 'Vt323'; cursor: pointer; z-index: 50; padding: 5px; text-align: left; }
-        #btn-heater { top: 20px; right: 20px; width: 180px; background: transparent; }
-        #btn-musicbox { top: 75px; right: 20px; width: 180px; background: transparent; }
+        /* UI Elements */
+        .hud-btn { position: absolute; background: rgba(0,0,0,0.6); border: 2px solid #fff; color: #fff; font-family: 'Vt323'; cursor: pointer; z-index: 50; padding: 5px; }
+        .status-text { font-size: 1.2rem; color: #0f0; margin-left: 5px; vertical-align: middle; }
+        
+        #btn-heater { top: 20px; right: 20px; width: 180px; text-align: left; background: transparent; }
+        #btn-musicbox { top: 75px; right: 20px; width: 180px; text-align: left; }
         #btn-light-left { top: 40%; left: 0; width: 60px; height: 120px; }
         #btn-light-right { top: 40%; right: 0; width: 60px; height: 120px; }
-        #btn-monitor { bottom: 20px; left: 50%; transform: translateX(-50%); width: 300px; height: 50px; border-color: #0f0; color: #0f0; font-size: 1.5rem; text-align: center; }
-        
-        .status-txt { font-size: 0.8rem; display: block; font-weight: bold; }
-        .green { color: #0f0; } .red { color: #f00; }
+        #btn-monitor { bottom: 20px; left: 50%; transform: translateX(-50%); width: 300px; height: 50px; border-color: #0f0; color: #0f0; font-size: 1.5rem; }
 
-        /* Camera System */
-        #map { position: absolute; bottom: 100px; right: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid #0f0; }
+        #map { position: absolute; bottom: 100px; right: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; background: rgba(0,0,0,0.8); padding: 10px; }
         .cam-btn { border: 1px solid #0f0; color: #0f0; background: #000; cursor: pointer; font-family: 'Vt323'; }
         .cam-btn.active { background: #0f0; color: #000; }
 
-        /* Jumpscares */
-        #jumpscare-overlay { position: absolute; width: 100%; height: 100%; z-index: 100; display: none; background: #000; overflow: hidden; }
+        /* Jumpscare */
+        #jumpscare-overlay { position: absolute; width: 100%; height: 100%; background: #000; z-index: 100; display: none; }
         #jumpscare-img { width: 100%; height: 100%; object-fit: cover; }
         
-        .oscillate { animation: shake 0.1s infinite; filter: contrast(1.1) brightness(1.1); }
-        .motion-blur { filter: blur(4px) contrast(1.2); transform: skewX(-10deg) scale(1.1); }
-        .slide-left { animation: slideLeft 0.5s ease-out forwards; }
-
-        @keyframes shake {
-            0% { transform: translate(4px, 2px) rotate(0deg); }
-            25% { transform: translate(-4px, -2px) rotate(-1deg); }
-            50% { transform: translate(2px, -4px) rotate(1deg); }
-            75% { transform: translate(-2px, 4px) rotate(0deg); }
-            100% { transform: translate(4px, 2px) rotate(0deg); }
+        /* Animations */
+        @keyframes oscillate {
+            0% { transform: translate(0,0) scale(1) rotate(0deg); }
+            20% { transform: translate(-15px, 10px) scale(1.05) rotate(-2deg); filter: blur(2px); }
+            40% { transform: translate(15px, -10px) scale(1.1) rotate(2deg); filter: blur(4px); }
+            100% { transform: translate(0,0) scale(1.05); }
         }
+        .jumpscare-anim { animation: oscillate 0.1s infinite; }
+        .slide-left { animation: slideLeft 0.5s ease-out; }
         @keyframes slideLeft { from { transform: translateX(-100%); } to { transform: translateX(0); } }
 
-        /* Setup Screen */
-        .setup-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; }
+        /* UCN Menu */
         #cn-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding: 20px; }
-        .char-slot { background: #111; border: 1px solid #444; padding: 10px; width: 100px; }
-        .ai-val { width: 40px; background: #000; color: #0f0; border: 1px solid #0f0; text-align: center; }
+        .char-card { background: #222; border: 1px solid #444; padding: 5px; text-align: center; }
+        .lvl-input { width: 40px; background: #000; color: #0f0; border: 1px solid #0f0; text-align: center; }
     </style>
 </head>
 <body>
 
 <div id="game-container">
-    <div id="jumpscare-overlay"><img id="jumpscare-img"></div>
+    <div id="jumpscare-overlay"><img id="jumpscare-img" src=""></div>
 
-    <div id="screen-load" class="setup-screen">
-        <h1>BFDI CUSTOM NIGHT: ASSET LOADER</h1>
-        <p>Please upload your assets.zip containing all PNG/MP3 files.</p>
+    <div id="screen-upload" class="screen active">
+        <h1>BFDI ASSET LOADER</h1>
         <input type="file" id="zip-input" accept=".zip">
+        <p id="load-msg"></p>
     </div>
 
-    <div id="screen-custom" class="setup-screen" style="display:none;">
-        <h1 style="color:#0f0">CHARACTER SELECTION</h1>
+    <div id="screen-menu" class="screen">
+        <h1 style="font-size: 4rem;">BFDI NIGHTS</h1>
+        <button onclick="showScreen('screen-custom')">START GAME</button>
+    </div>
+
+    <div id="screen-custom" class="screen">
         <div id="cn-grid"></div>
-        <div style="margin-top:20px;">
-            <button onclick="startGame(false)" style="padding:10px 40px; font-size:1.5rem; cursor:pointer;">START NIGHT</button>
-            <button onclick="startGame(true)" style="padding:10px 40px; font-size:1.5rem; cursor:pointer; color:red;">HARDCORE MODE</button>
-        </div>
+        <button onclick="startGame()">START NIGHT</button>
     </div>
 
-    <div id="screen-game" style="display:none;">
+    <div id="screen-game" class="screen" style="display:none; background:#000;">
         <div id="office-view"></div>
         
         <div id="monitor-overlay">
             <div id="cam-feed"></div>
             <div id="map">
-                <button class="cam-btn" onclick="setCam('L_HALL')">LEFT HALL</button>
-                <button class="cam-btn" onclick="setCam('R_HALL')">RIGHT HALL</button>
-                <button class="cam-btn" onclick="setCam('CLOSET')">CLOSET</button>
-                <button class="cam-btn" onclick="setCam('PS')">PARTS/SERVICE</button>
+                <button class="cam-btn" onclick="setCam('CAM1')">L. HALL</button>
+                <button class="cam-btn" onclick="setCam('CAM2')">R. HALL</button>
+                <button class="cam-btn" onclick="setCam('CAM3')">CLOSET</button>
+                <button class="cam-btn" onclick="setCam('CAM4')">P/S</button>
             </div>
         </div>
 
-        <button id="btn-heater" class="hud-btn" onclick="toggleHeater()">HEATER <span id="h-stat" class="status-txt green">TURN OFF</span></button>
-        <button id="btn-musicbox" class="hud-btn" onmousedown="windMusic(true)" onmouseup="windMusic(false)">MUSIC BOX <span id="m-stat" class="status-txt green">TURN OFF</span></button>
+        <button id="btn-heater" class="hud-btn" onclick="toggleHeater()">HEATER <span id="heater-status" class="status-text">OFF</span></button>
+        <button id="btn-musicbox" class="hud-btn" onmousedown="windBox(true)" onmouseup="windBox(false)">MUSIC BOX <span id="box-status" class="status-text">OFF</span></button>
         
-        <button id="btn-light-left" class="hud-btn" onmousedown="light('L', true)" onmouseup="light('L', false)">LEFT LIGHT</button>
-        <button id="btn-light-right" class="hud-btn" onmousedown="light('R', true)" onmouseup="light('R', false)">RIGHT LIGHT</button>
-        
+        <button id="btn-light-left" class="hud-btn" onmousedown="setLight('L', true)" onmouseup="setLight('L', false)">LIGHT</button>
+        <button id="btn-light-right" class="hud-btn" onmousedown="setLight('R', true)" onmouseup="setLight('R', false)">LIGHT</button>
         <button id="btn-monitor" class="hud-btn" onclick="toggleMonitor()">MONITOR</button>
     </div>
 </div>
 
 <script>
-    const ASSET_NAMES = [
+    const ASSETS = [
         'Office.png', 'OfficeLeftLight.png', 'OfficeRightLight.png', 'FireyLeftwithLight.png', 'FireyLeftHall.png', 'FireyNearLeftHall.png', 'FireyJumpscare.png', 'ClockPartsorService.png', 'PartsorServiceGameOver.webp', 'ClockJumpscare.png', 'RightHallEmpty.webp', 'LeftHallEmpty.webp', 'MarkerRightHall.png', 'SupplyClosetMarker.png', 'MarkerJumpscare.png', 'SupplyClosetEmpty.webp', 'TeardropLeftHall.png', 'TeardropRun.png', 'TeardropJumpscare.png', 'BookSupplyCloset.png', 'BookJumpscare.png', 'GelatinRightHall.png', 'GelatinJumpscare.png', 'LeafyLeftHall.png', 'LeafyJumpscare.png', 'LeafyandFireyLeftHall.png', 'FlowerJumpscare.png', 'LiyinRightHallWindow.png', 'LiyJumpscare.png', 'ProfileyOffice.png', 'ProfileyJumpscare.png', 'GelatinProfileyMarkerJumpscare.mp3', 'LiyLeafyBookJumpscare.mp3', 'CinematicBoom.mp3', 'RadioStatic.mp3', 'Mouse Click - Sound Effect (HD).mp3', 'BFB Ost - Places (Low Quality  FULL VERSION).mp3'
     ];
-    const CHARS = ['Flower', 'Teardrop', 'Leafy', 'Firey', 'Marker', 'Gelatin', 'Liy', 'Profiley', 'Clock', 'Book'];
-
-    let assets = {}, ai = {}, isHardcore = false;
-    let game = {
-        state: 'menu', mon: false, heater: false, cam: 'L_HALL', music: 1000,
-        lightL: false, lightR: false, clockTimer: 0,
-        fireyStage: 0, fireyTimer: 0, markerStage: 0, markerTimer: 0, 
-        tdTimer: 0, tdGlitch: false, bookSeen: false, profActive: false, liyTimer: 0
+    const CHARS = ['Firey', 'Clock', 'Marker', 'Teardrop', 'Book', 'Gelatin', 'Leafy', 'Flower', 'Liy', 'Profiley'];
+    
+    let assets = {}, ai = {}, game = { 
+        state: 'menu', mon: false, heater: false, cam: 'CAM1', box: 1000, 
+        lightL: false, lightR: false, clockTimer: 0, profileyActive: false,
+        fireyStage: 0, fireyTimer: 0, markerStage: 0, markerTimer: 0, tdTimer: 0, 
+        bookVisible: false, liyChance: false, liyTimer: 0
     };
 
-    let musicLoop = null;
-
-    // Zip Unpacker
+    // Load Assets
     document.getElementById('zip-input').onchange = async (e) => {
         const zip = new JSZip();
         const content = await zip.loadAsync(e.target.files[0]);
-        for(let n of ASSET_NAMES) {
-            let key = Object.keys(content.files).find(k => k.toLowerCase() === n.toLowerCase());
-            if(key) assets[n] = URL.createObjectURL(await content.files[key].async('blob'));
+        for(let n of ASSETS) {
+            let k = Object.keys(content.files).find(x => x.toLowerCase() === n.toLowerCase());
+            if(k) assets[n] = URL.createObjectURL(await content.files[k].async('blob'));
         }
-        initMenu();
+        document.getElementById('cn-grid').innerHTML = CHARS.map(c => `<div class="char-card"><div>${c}</div><input type="number" id="ai-${c}" class="lvl-input" value="0" min="0" max="20"></div>`).join('');
+        showScreen('screen-menu');
     };
 
-    function initMenu() {
-        const grid = document.getElementById('cn-grid');
-        grid.innerHTML = CHARS.map(c => `
-            <div class="char-slot">
-                <div>${c}</div>
-                <input type="number" id="ai-${c}" class="ai-val" value="0" min="0" max="20">
-            </div>
-        `).join('');
-        document.getElementById('screen-load').style.display = 'none';
-        document.getElementById('screen-custom').style.display = 'flex';
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).style.display = 'flex';
+        document.getElementById(id).classList.add('active');
     }
 
     function playSfx(n) { if(assets[n]) new Audio(assets[n]).play(); }
+
+    function toggleHeater() {
+        game.heater = !game.heater;
+        document.getElementById('heater-status').innerText = game.heater ? "ON" : "OFF";
+        document.getElementById('heater-status').style.color = game.heater ? "#f00" : "#0f0";
+        playSfx('Mouse Click - Sound Effect (HD).mp3');
+    }
+
+    function windBox(val) {
+        game.isWinding = val;
+        document.getElementById('box-status').innerText = val ? "ON" : "OFF";
+        if(val && !game.boxSfx) {
+            game.boxSfx = new Audio(assets['BFB Ost - Places (Low Quality  FULL VERSION).mp3']);
+            game.boxSfx.loop = true;
+            game.boxSfx.play();
+        } else if(!val && game.boxSfx) {
+            game.boxSfx.pause(); game.boxSfx = null;
+        }
+    }
+
+    function setLight(side, val) {
+        playSfx('Mouse Click - Sound Effect (HD).mp3');
+        if(side === 'L') game.lightL = val; else game.lightR = val;
+        updateOffice();
+    }
 
     function toggleMonitor() {
         playSfx('Mouse Click - Sound Effect (HD).mp3');
         game.mon = !game.mon;
         if(game.mon) playSfx('RadioStatic.mp3');
         document.getElementById('monitor-overlay').style.display = game.mon ? 'block' : 'none';
-        
-        // Book Exit Logic
-        if(!game.mon && game.bookPrimed) triggerJumpscare('Book');
-        updateCams();
-    }
-
-    function light(side, val) {
-        playSfx('Mouse Click - Sound Effect (HD).mp3');
-        if(side === 'L') game.lightL = val; else game.lightR = val;
-        
-        // Firey Interaction
-        if(game.lightL && game.fireyStage === 2) {
-            updateOffice();
-            setTimeout(() => triggerJumpscare('Firey'), 2000);
-        }
-        updateOffice();
-    }
-
-    function toggleHeater() {
-        game.heater = !game.heater;
-        const h = document.getElementById('h-stat');
-        h.innerText = game.heater ? "TURN ON" : "TURN OFF";
-        h.className = `status-txt ${game.heater ? 'red' : 'green'}`;
-        playSfx('Mouse Click - Sound Effect (HD).mp3');
-    }
-
-    function windMusic(val) {
-        game.winding = val;
-        const m = document.getElementById('m-stat');
-        m.innerText = val ? "TURN ON" : "TURN OFF";
-        m.className = `status-txt ${val ? 'red' : 'green'}`;
-        if(val && !musicLoop) {
-            musicLoop = new Audio(assets['BFB Ost - Places (Low Quality  FULL VERSION).mp3']);
-            musicLoop.loop = true; musicLoop.play();
-        } else if(!val && musicLoop) {
-            musicLoop.pause(); musicLoop = null;
-        }
+        updateCam();
     }
 
     function setCam(id) {
         game.cam = id;
         playSfx('Mouse Click - Sound Effect (HD).mp3');
-        if(game.cam === 'CLOSET' && game.bookInCloset) game.bookPrimed = true;
-        updateCams();
+        updateCam();
     }
 
-    function startGame(h) {
-        isHardcore = h;
-        CHARS.forEach(c => ai[c] = h ? 20 : parseInt(document.getElementById('ai-'+c).value));
+    function startGame() {
+        CHARS.forEach(c => ai[c] = parseInt(document.getElementById('ai-'+c).value));
         game.state = 'play';
-        document.getElementById('screen-custom').style.display = 'none';
-        document.getElementById('screen-game').style.display = 'block';
+        game.box = 1000;
+        showScreen('screen-game');
         updateOffice();
-        setInterval(loop, 100);
+        setInterval(tick, 100);
     }
 
-    function loop() {
+    function tick() {
         if(game.state !== 'play') return;
-        let p = isHardcore ? 0.9 : (Object.values(ai).every(v => v === 20) ? 0.7 : 0.4);
 
-        // Firey Cycle
-        if(Math.random() < (ai.Firey/20)*p && game.fireyStage === 0) game.fireyStage = 1;
-        if(game.fireyStage === 1) { 
-            game.fireyTimer += 0.1; 
+        let roll = (c) => {
+            let lvl = ai[c];
+            let chance = (lvl === 20) ? 0.7 : (lvl / 20) * 0.5;
+            return Math.random() < chance;
+        };
+
+        // Firey Logic
+        if(roll('Firey') && game.fireyStage === 0) game.fireyStage = 1; // Left Hall
+        if(game.fireyStage === 1 && !game.mon) {
+            game.fireyTimer += 0.1;
             if(game.fireyTimer >= 30) { game.fireyStage = 2; game.fireyTimer = 0; }
         }
-        if(game.fireyStage === 2) {
+        if(game.fireyStage === 2) { // Near Door
             game.fireyTimer += 0.1;
-            if(game.fireyTimer >= 15 && !game.lightL && game.fireyTimer >= 25) game.fireyStage = 0;
-        }
-
-        // Clock 30s Rule
-        if(!game.mon || game.cam !== 'PS') game.clockTimer += 0.1; else game.clockTimer = 0;
-        if(game.clockTimer >= 30 && game.mon && game.cam === 'PS') {
-            updateCams();
-            setTimeout(() => triggerJumpscare('Clock'), 2000);
-        }
-
-        // Marker & Book Logic
-        if(game.markerStage === 0 && Math.random() < 0.005) {
-            if(Math.random() < 0.6) game.markerStage = 1; else game.bookInCloset = true;
-        }
-        if(game.markerStage === 1 && (game.markerTimer += 0.1) >= 30) { game.markerStage = 2; game.markerTimer = 0; }
-        if(game.markerStage === 2) {
-            if(game.heater) { if((game.markerTimer += 0.1) >= 6) game.markerStage = 0; }
-            else { if((game.markerTimer -= 0.1) < -15) triggerJumpscare('Marker'); }
-        }
-
-        // Teardrop Glitch
-        if(game.cam === 'L_HALL' && game.mon && ai.Teardrop > 0 && Math.random() < 0.3) {
-            if((game.tdTimer += 0.1) >= 8) {
-                game.tdGlitch = true; updateCams();
-                setTimeout(() => { if(!game.heater) triggerJumpscare('Teardrop'); else game.tdGlitch = false; }, 2000);
+            if(game.fireyTimer >= 15) {
+                if(game.lightL) die('Firey');
+                if(game.fireyTimer >= 25) game.fireyStage = 0; // Left safely
             }
         }
 
-        // Music Box Drain
-        if(game.winding) game.music = Math.min(1000, game.music + 15);
-        else game.music -= (ai.Flower * 0.15);
-        if(game.music <= 0) triggerJumpscare('Flower');
+        // Clock Logic
+        if(game.cam === 'CAM4' && game.mon) game.clockTimer = 0;
+        else game.clockTimer += 0.1;
+        if(game.clockTimer >= 30 && game.cam === 'CAM4' && game.mon) {
+             updateCam(); // Switch to PartsorServiceGameOver
+             setTimeout(() => die('Clock'), 2000);
+        }
+
+        // Heater Mechanics
+        if(game.heater) {
+            if(game.markerStage === 2) { game.markerTimer += 0.1; if(game.markerTimer >= 6) game.markerStage = 0; }
+            if(game.profActive) { game.profTimer += 0.1; if(game.profTimer >= 3) { game.profActive = false; updateOffice(); } }
+        }
+
+        // Flower/Music Box
+        if(game.isWinding) game.box = Math.min(1000, game.box + 10);
+        else game.box -= (ai['Flower'] * 0.1 + 0.5);
+        if(game.box <= 0) die('Flower');
 
         // Profiley Boom
-        if(Math.random() < 0.001) {
+        if(Math.random() < 0.001 && !game.profActive) {
             playSfx('CinematicBoom.mp3');
-            setTimeout(() => { game.profActive = true; updateOffice(); }, 1000);
+            setTimeout(() => { game.profActive = true; game.profTimer = 0; updateOffice(); }, 1000);
         }
-        if(game.profActive) {
-            if(game.heater) { game.pTimer = (game.pTimer||0)+0.1; if(game.pTimer >= 3) { game.profActive = false; updateOffice(); } }
-        }
+
+        // Liy Right Light Check
+        if(game.lightR) {
+            game.liyTimer += 0.1;
+            if(game.liyTimer > 10) die('Liy');
+        } else game.liyTimer = 0;
     }
 
     function updateOffice() {
-        let bg = assets['Office.png'];
-        if(game.profActive) bg = assets['ProfileyOffice.png'];
-        else if(game.lightL) bg = (game.fireyStage === 2) ? assets['FireyLeftwithLight.png'] : assets['OfficeLeftLight.png'];
+        let img = assets['Office.png'];
+        if(game.profActive) img = assets['ProfileyOffice.png'];
+        else if(game.lightL) {
+            img = (game.fireyStage === 2) ? assets['FireyLeftwithLight.png'] : assets['OfficeLeftLight.png'];
+        }
         else if(game.lightR) {
-            bg = (Math.random() < 0.4) ? assets['LiyinRightHallWindow.png'] : assets['OfficeRightLight.png'];
+            img = (Math.random() < 0.4) ? assets['LiyinRightHallWindow.png'] : assets['OfficeRightLight.png'];
         }
-        document.getElementById('office-view').style.backgroundImage = `url(${bg})`;
+        document.getElementById('office-view').style.backgroundImage = `url(${img})`;
     }
 
-    function updateCams() {
-        let img = '';
-        if(game.cam === 'L_HALL') {
-            img = game.tdGlitch ? assets['TeardropRun.png'] : (game.fireyStage === 1 ? assets['FireyLeftHall.png'] : assets['LeftHallEmpty.webp']);
-        } else if(game.cam === 'CLOSET') {
-            img = game.bookInCloset ? assets['BookSupplyCloset.png'] : (game.markerStage === 1 ? assets['SupplyClosetMarker.png'] : assets['SupplyClosetEmpty.webp']);
-        } else if(game.cam === 'PS') {
-            img = game.clockTimer >= 30 ? assets['PartsorServiceGameOver.webp'] : assets['ClockPartsorService.png'];
+    function updateCam() {
+        let feed = document.getElementById('cam-feed');
+        let img = assets['LeftHallEmpty.webp'];
+        if(game.cam === 'CAM1') {
+            if(game.fireyStage === 1) img = assets['FireyLeftHall.png'];
+            else img = assets['LeftHallEmpty.webp'];
         }
-        document.getElementById('cam-feed').style.backgroundImage = `url(${img})`;
+        if(game.cam === 'CAM4') {
+            img = (game.clockTimer >= 30) ? assets['PartsorServiceGameOver.webp'] : assets['ClockPartsorService.png'];
+        }
+        feed.style.backgroundImage = `url(${img})`;
     }
 
-    function triggerJumpscare(who) {
+    function die(k) {
         if(game.state === 'dead') return;
-        game.state = 'dead'; game.mon = false;
+        game.state = 'dead';
+        game.mon = false;
         document.getElementById('monitor-overlay').style.display = 'none';
         
-        let sfx = ['Gelatin','Profiley','Marker'].includes(who) ? 'GelatinProfileyMarkerJumpscare.mp3' : 'LiyLeafyBookJumpscare.mp3';
+        let sfx = 'GelatinProfileyMarkerJumpscare.mp3';
+        if(['Liy','Leafy','Book'].includes(k)) sfx = 'LiyLeafyBookJumpscare.mp3';
         playSfx(sfx);
 
-        const img = document.getElementById('jumpscare-img');
-        img.src = assets[who + 'Jumpscare.png'];
-        img.className = 'oscillate motion-blur';
-        if(who === 'Teardrop') img.classList.add('slide-left');
+        let jImg = document.getElementById('jumpscare-img');
+        jImg.src = assets[k+'Jumpscare.png'];
+        jImg.className = 'jumpscare-anim';
+        if(k === 'Teardrop') jImg.classList.add('slide-left');
         
         document.getElementById('jumpscare-overlay').style.display = 'block';
         setTimeout(() => location.reload(), 3000);
     }
 </script>
 </body>
-            </html>
+</html>
