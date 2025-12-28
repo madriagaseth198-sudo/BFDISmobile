@@ -2,295 +2,19 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BFDI Ultimate Custom Night</title>
+    <title>BFDI Custom Night</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Vt323&display=swap');
-        body { margin: 0; background: #000; color: #fff; font-family: 'Vt323', monospace; overflow: hidden; }
-        #game-container { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
-        .screen { position: absolute; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; background: #111; z-index: 10; }
-        .active { display: flex; }
-        
-        /* Office & Visuals */
-        #office-view { position: absolute; width: 100%; height: 100%; background-size: cover; background-position: center; z-index: 1; }
-        #monitor-overlay { position: absolute; width: 100%; height: 100%; background: #000; z-index: 30; display: none; border: 10px solid #333; box-sizing: border-box; }
-        #cam-feed { width: 100%; height: 100%; background-size: contain; background-repeat: no-repeat; background-position: center; }
-
-        /* UI Elements */
-        .hud-btn { position: absolute; background: rgba(0,0,0,0.6); border: 2px solid #fff; color: #fff; font-family: 'Vt323'; cursor: pointer; z-index: 50; padding: 5px; }
-        .status-text { font-size: 1.2rem; color: #0f0; margin-left: 5px; vertical-align: middle; }
-        
-        #btn-heater { top: 20px; right: 20px; width: 180px; text-align: left; background: transparent; }
-        #btn-musicbox { top: 75px; right: 20px; width: 180px; text-align: left; }
-        #btn-light-left { top: 40%; left: 0; width: 60px; height: 120px; }
-        #btn-light-right { top: 40%; right: 0; width: 60px; height: 120px; }
-        #btn-monitor { bottom: 20px; left: 50%; transform: translateX(-50%); width: 300px; height: 50px; border-color: #0f0; color: #0f0; font-size: 1.5rem; }
-
-        #map { position: absolute; bottom: 100px; right: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; background: rgba(0,0,0,0.8); padding: 10px; }
-        .cam-btn { border: 1px solid #0f0; color: #0f0; background: #000; cursor: pointer; font-family: 'Vt323'; }
-        .cam-btn.active { background: #0f0; color: #000; }
-
-        /* Jumpscare */
-        #jumpscare-overlay { position: absolute; width: 100%; height: 100%; background: #000; z-index: 100; display: none; }
-        #jumpscare-img { width: 100%; height: 100%; object-fit: cover; }
-        
-        /* Animations */
-        @keyframes oscillate {
-            0% { transform: translate(0,0) scale(1) rotate(0deg); }
-            20% { transform: translate(-15px, 10px) scale(1.05) rotate(-2deg); filter: blur(2px); }
-            40% { transform: translate(15px, -10px) scale(1.1) rotate(2deg); filter: blur(4px); }
-            100% { transform: translate(0,0) scale(1.05); }
-        }
-        .jumpscare-anim { animation: oscillate 0.1s infinite; }
-        .slide-left { animation: slideLeft 0.5s ease-out; }
-        @keyframes slideLeft { from { transform: translateX(-100%); } to { transform: translateX(0); } }
-
-        /* UCN Menu */
-        #cn-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding: 20px; }
-        .char-card { background: #222; border: 1px solid #444; padding: 5px; text-align: center; }
-        .lvl-input { width: 40px; background: #000; color: #0f0; border: 1px solid #0f0; text-align: center; }
-    </style>
-</head>
-<body>
-
-<div id="game-container">
-    <div id="jumpscare-overlay"><img id="jumpscare-img" src=""></div>
-
-    <div id="screen-upload" class="screen active">
-        <h1>BFDI ASSET LOADER</h1>
-        <input type="file" id="zip-input" accept=".zip">
-        <p id="load-msg"></p>
-    </div>
-
-    <div id="screen-menu" class="screen">
-        <h1 style="font-size: 4rem;">BFDI NIGHTS</h1>
-        <button onclick="showScreen('screen-custom')">START GAME</button>
-    </div>
-
-    <div id="screen-custom" class="screen">
-        <div id="cn-grid"></div>
-        <button onclick="startGame()">START NIGHT</button>
-    </div>
-
-    <div id="screen-game" class="screen" style="display:none; background:#000;">
-        <div id="office-view"></div>
-        
-        <div id="monitor-overlay">
-            <div id="cam-feed"></div>
-            <div id="map">
-                <button class="cam-btn" onclick="setCam('CAM1')">L. HALL</button>
-                <button class="cam-btn" onclick="setCam('CAM2')">R. HALL</button>
-                <button class="cam-btn" onclick="setCam('CAM3')">CLOSET</button>
-                <button class="cam-btn" onclick="setCam('CAM4')">P/S</button>
-            </div>
-        </div>
-
-        <button id="btn-heater" class="hud-btn" onclick="toggleHeater()">HEATER <span id="heater-status" class="status-text">OFF</span></button>
-        <button id="btn-musicbox" class="hud-btn" onmousedown="windBox(true)" onmouseup="windBox(false)">MUSIC BOX <span id="box-status" class="status-text">OFF</span></button>
-        
-        <button id="btn-light-left" class="hud-btn" onmousedown="setLight('L', true)" onmouseup="setLight('L', false)">LIGHT</button>
-        <button id="btn-light-right" class="hud-btn" onmousedown="setLight('R', true)" onmouseup="setLight('R', false)">LIGHT</button>
-        <button id="btn-monitor" class="hud-btn" onclick="toggleMonitor()">MONITOR</button>
-    </div>
-</div>
-
-<script>
-    const ASSETS = [
-        'Office.png', 'OfficeLeftLight.png', 'OfficeRightLight.png', 'FireyLeftwithLight.png', 'FireyLeftHall.png', 'FireyNearLeftHall.png', 'FireyJumpscare.png', 'ClockPartsorService.png', 'PartsorServiceGameOver.webp', 'ClockJumpscare.png', 'RightHallEmpty.webp', 'LeftHallEmpty.webp', 'MarkerRightHall.png', 'SupplyClosetMarker.png', 'MarkerJumpscare.png', 'SupplyClosetEmpty.webp', 'TeardropLeftHall.png', 'TeardropRun.png', 'TeardropJumpscare.png', 'BookSupplyCloset.png', 'BookJumpscare.png', 'GelatinRightHall.png', 'GelatinJumpscare.png', 'LeafyLeftHall.png', 'LeafyJumpscare.png', 'LeafyandFireyLeftHall.png', 'FlowerJumpscare.png', 'LiyinRightHallWindow.png', 'LiyJumpscare.png', 'ProfileyOffice.png', 'ProfileyJumpscare.png', 'GelatinProfileyMarkerJumpscare.mp3', 'LiyLeafyBookJumpscare.mp3', 'CinematicBoom.mp3', 'RadioStatic.mp3', 'Mouse Click - Sound Effect (HD).mp3', 'BFB Ost - Places (Low Quality  FULL VERSION).mp3'
-    ];
-    const CHARS = ['Firey', 'Clock', 'Marker', 'Teardrop', 'Book', 'Gelatin', 'Leafy', 'Flower', 'Liy', 'Profiley'];
-    
-    let assets = {}, ai = {}, game = { 
-        state: 'menu', mon: false, heater: false, cam: 'CAM1', box: 1000, 
-        lightL: false, lightR: false, clockTimer: 0, profileyActive: false,
-        fireyStage: 0, fireyTimer: 0, markerStage: 0, markerTimer: 0, tdTimer: 0, 
-        bookVisible: false, liyChance: false, liyTimer: 0
-    };
-
-    // Load Assets
-    document.getElementById('zip-input').onchange = async (e) => {
-        const zip = new JSZip();
-        const content = await zip.loadAsync(e.target.files[0]);
-        for(let n of ASSETS) {
-            let k = Object.keys(content.files).find(x => x.toLowerCase() === n.toLowerCase());
-            if(k) assets[n] = URL.createObjectURL(await content.files[k].async('blob'));
-        }
-        document.getElementById('cn-grid').innerHTML = CHARS.map(c => `<div class="char-card"><div>${c}</div><input type="number" id="ai-${c}" class="lvl-input" value="0" min="0" max="20"></div>`).join('');
-        showScreen('screen-menu');
-    };
-
-    function showScreen(id) {
-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        document.getElementById(id).style.display = 'flex';
-        document.getElementById(id).classList.add('active');
-    }
-
-    function playSfx(n) { if(assets[n]) new Audio(assets[n]).play(); }
-
-    function toggleHeater() {
-        game.heater = !game.heater;
-        document.getElementById('heater-status').innerText = game.heater ? "ON" : "OFF";
-        document.getElementById('heater-status').style.color = game.heater ? "#f00" : "#0f0";
-        playSfx('Mouse Click - Sound Effect (HD).mp3');
-    }
-
-    function windBox(val) {
-        game.isWinding = val;
-        document.getElementById('box-status').innerText = val ? "ON" : "OFF";
-        if(val && !game.boxSfx) {
-            game.boxSfx = new Audio(assets['BFB Ost - Places (Low Quality  FULL VERSION).mp3']);
-            game.boxSfx.loop = true;
-            game.boxSfx.play();
-        } else if(!val && game.boxSfx) {
-            game.boxSfx.pause(); game.boxSfx = null;
-        }
-    }
-
-    function setLight(side, val) {
-        playSfx('Mouse Click - Sound Effect (HD).mp3');
-        if(side === 'L') game.lightL = val; else game.lightR = val;
-        updateOffice();
-    }
-
-    function toggleMonitor() {
-        playSfx('Mouse Click - Sound Effect (HD).mp3');
-        game.mon = !game.mon;
-        if(game.mon) playSfx('RadioStatic.mp3');
-        document.getElementById('monitor-overlay').style.display = game.mon ? 'block' : 'none';
-        updateCam();
-    }
-
-    function setCam(id) {
-        game.cam = id;
-        playSfx('Mouse Click - Sound Effect (HD).mp3');
-        updateCam();
-    }
-
-    function startGame() {
-        CHARS.forEach(c => ai[c] = parseInt(document.getElementById('ai-'+c).value));
-        game.state = 'play';
-        game.box = 1000;
-        showScreen('screen-game');
-        updateOffice();
-        setInterval(tick, 100);
-    }
-
-    function tick() {
-        if(game.state !== 'play') return;
-
-        let roll = (c) => {
-            let lvl = ai[c];
-            let chance = (lvl === 20) ? 0.7 : (lvl / 20) * 0.5;
-            return Math.random() < chance;
-        };
-
-        // Firey Logic
-        if(roll('Firey') && game.fireyStage === 0) game.fireyStage = 1; // Left Hall
-        if(game.fireyStage === 1 && !game.mon) {
-            game.fireyTimer += 0.1;
-            if(game.fireyTimer >= 30) { game.fireyStage = 2; game.fireyTimer = 0; }
-        }
-        if(game.fireyStage === 2) { // Near Door
-            game.fireyTimer += 0.1;
-            if(game.fireyTimer >= 15) {
-                if(game.lightL) die('Firey');
-                if(game.fireyTimer >= 25) game.fireyStage = 0; // Left safely
-            }
-        }
-
-        // Clock Logic
-        if(game.cam === 'CAM4' && game.mon) game.clockTimer = 0;
-        else game.clockTimer += 0.1;
-        if(game.clockTimer >= 30 && game.cam === 'CAM4' && game.mon) {
-             updateCam(); // Switch to PartsorServiceGameOver
-             setTimeout(() => die('Clock'), 2000);
-        }
-
-        // Heater Mechanics
-        if(game.heater) {
-            if(game.markerStage === 2) { game.markerTimer += 0.1; if(game.markerTimer >= 6) game.markerStage = 0; }
-            if(game.profActive) { game.profTimer += 0.1; if(game.profTimer >= 3) { game.profActive = false; updateOffice(); } }
-        }
-
-        // Flower/Music Box
-        if(game.isWinding) game.box = Math.min(1000, game.box + 10);
-        else game.box -= (ai['Flower'] * 0.1 + 0.5);
-        if(game.box <= 0) die('Flower');
-
-        // Profiley Boom
-        if(Math.random() < 0.001 && !game.profActive) {
-            playSfx('CinematicBoom.mp3');
-            setTimeout(() => { game.profActive = true; game.profTimer = 0; updateOffice(); }, 1000);
-        }
-
-        // Liy Right Light Check
-        if(game.lightR) {
-            game.liyTimer += 0.1;
-            if(game.liyTimer > 10) die('Liy');
-        } else game.liyTimer = 0;
-    }
-
-    function updateOffice() {
-        let img = assets['Office.png'];
-        if(game.profActive) img = assets['ProfileyOffice.png'];
-        else if(game.lightL) {
-            img = (game.fireyStage === 2) ? assets['FireyLeftwithLight.png'] : assets['OfficeLeftLight.png'];
-        }
-        else if(game.lightR) {
-            img = (Math.random() < 0.4) ? assets['LiyinRightHallWindow.png'] : assets['OfficeRightLight.png'];
-        }
-        document.getElementById('office-view').style.backgroundImage = `url(${img})`;
-    }
-
-    function updateCam() {
-        let feed = document.getElementById('cam-feed');
-        let img = assets['LeftHallEmpty.webp'];
-        if(game.cam === 'CAM1') {
-            if(game.fireyStage === 1) img = assets['FireyLeftHall.png'];
-            else img = assets['LeftHallEmpty.webp'];
-        }
-        if(game.cam === 'CAM4') {
-            img = (game.clockTimer >= 30) ? assets['PartsorServiceGameOver.webp'] : assets['ClockPartsorService.png'];
-        }
-        feed.style.backgroundImage = `url(${img})`;
-    }
-
-    function die(k) {
-        if(game.state === 'dead') return;
-        game.state = 'dead';
-        game.mon = false;
-        document.getElementById('monitor-overlay').style.display = 'none';
-        
-        let sfx = 'GelatinProfileyMarkerJumpscare.mp3';
-        if(['Liy','Leafy','Book'].includes(k)) sfx = 'LiyLeafyBookJumpscare.mp3';
-        playSfx(sfx);
-
-        let jImg = document.getElementById('jumpscare-img');
-        jImg.src = assets[k+'Jumpscare.png'];
-        jImg.className = 'jumpscare-anim';
-        if(k === 'Teardrop') jImg.classList.add('slide-left');
-        
-        document.getElementById('jumpscare-overlay').style.display = 'block';
-        setTimeout(() => location.reload(), 3000);
-    }
-</script>
-</body>
-</<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>BFB Custom Night - Full Configuration</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Vt323&display=swap');
-        body { margin: 0; background: #000; color: #fff; font-family: 'Vt323', monospace; overflow: hidden; }
+        body { margin: 0; background: #000; color: #fff; font-family: 'Vt323', monospace; overflow: hidden; user-select: none; }
         #game-container { position: relative; width: 100vw; height: 100vh; }
         
-        /* Office Backgrounds */
-        #office-bg { position: absolute; width: 100%; height: 100%; background-size: cover; background-position: center; z-index: 1; }
-        
-        /* UCN Transparent UI */
+        /* Office layers */
+        #office-layer { position: absolute; width: 100%; height: 100%; background-size: cover; background-position: center; z-index: 1; }
+        #jumpscare-overlay { position: absolute; width: 100%; height: 100%; z-index: 100; display: none; pointer-events: none; }
+        #jumpscare-img { width: 100%; height: 100%; object-fit: contain; }
+
+        /* UCN UI - Buttons are transparent with white outlines */
         .hud-btn { 
             position: absolute; background: transparent; border: 2px solid #fff; 
             color: #fff; font-family: 'Vt323'; cursor: pointer; z-index: 50; 
@@ -298,60 +22,56 @@
         }
         #btn-heater { top: 20px; right: 20px; }
         #btn-musicbox { top: 80px; right: 20px; }
-        #btn-light-left { top: 40%; left: 10px; width: 60px; height: 100px; text-align: center; }
-        #btn-light-right { top: 40%; right: 10px; width: 60px; height: 100px; text-align: center; }
+        #btn-light-left { top: 40%; left: 10px; width: 70px; height: 120px; text-align: center; }
+        #btn-light-right { top: 40%; right: 10px; width: 70px; height: 120px; text-align: center; }
         #btn-monitor { bottom: 20px; left: 50%; transform: translateX(-50%); width: 300px; border-color: #0f0; color: #0f0; text-align: center; font-size: 1.5rem; }
         
-        /* Monitor System */
+        /* Monitor */
         #monitor-overlay { position: absolute; width: 100%; height: 100%; background: #000; z-index: 60; display: none; }
         #cam-feed { width: 100%; height: 100%; background-size: contain; background-repeat: no-repeat; background-position: center; }
-        #map { position: absolute; bottom: 80px; right: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid #0f0; }
+        #map { position: absolute; bottom: 100px; right: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid #0f0; }
         .cam-btn { border: 1px solid #0f0; color: #0f0; background: #000; cursor: pointer; }
 
-        /* Jumpscares with Motion Blur and Slant */
-        #jumpscare-overlay { position: absolute; width: 100%; height: 100%; z-index: 200; display: none; background-size: cover; }
-        .jumpscare-anim { 
-            animation: oscillate 0.1s infinite; 
-            filter: blur(2px) brightness(1.2);
-            transform: skewX(-5deg); /* FNAF style slant */
-        }
-        .td-slide { animation: slideInLeft 1s ease-out; }
+        /* Jumpscare Animations */
+        .oscillate { animation: shake 0.1s infinite; filter: blur(1px) contrast(1.2); transform: skewX(-5deg); }
+        .td-slide { animation: slideLeft 0.5s ease-out forwards; }
 
-        @keyframes oscillate {
-            0% { transform: translate(5px, 5px) rotate(0deg) skewX(-5deg); }
-            50% { transform: translate(-5px, -5px) rotate(2deg) skewX(-5deg); }
-            100% { transform: translate(3px, -3px) rotate(-1deg) skewX(-5deg); }
+        @keyframes shake { 
+            0% { transform: translate(5px, 5px) skewX(-5deg); } 
+            50% { transform: translate(-5px, -5px) rotate(2deg) skewX(-5deg); } 
+            100% { transform: translate(2px, -2px) skewX(-5deg); } 
         }
-        @keyframes slideInLeft { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+        @keyframes slideLeft { from { transform: translateX(-100%); } to { transform: translateX(0); } }
 
-        .screen { position: absolute; width: 100%; height: 100%; background: #000; z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        /* Menus */
+        .full-screen { position: absolute; width: 100%; height: 100%; background: #000; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         #cn-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 20px; }
     </style>
 </head>
 <body>
 
 <div id="game-container">
-    <div id="screen-load" class="screen">
-        <h1>BFB CUSTOM NIGHT</h1>
+    <div id="screen-load" class="full-screen">
+        <h1>BFDI CUSTOM NIGHT</h1>
         <input type="file" id="zip-input" accept=".zip">
-        <p>Upload Assets ZIP</p>
+        <p>Please provide ZIP file to unlock "Start Night".</p>
     </div>
 
-    <div id="screen-menu" class="screen" style="display:none;">
-        <h1 style="color:#0f0">SELECT AI LEVELS</h1>
+    <div id="screen-menu" class="full-screen" style="display:none;">
+        <h1 style="color:#0f0">ULTIMATE CUSTOM NIGHT</h1>
         <div id="cn-grid"></div>
-        <button onclick="startGame()" style="padding:10px 40px; font-size:1.5rem;">START</button>
+        <button onclick="startGame()" style="padding:15px 60px; font-size:2rem; cursor:pointer;">START NIGHT</button>
     </div>
 
-    <div id="screen-retry" class="screen" style="display:none;">
-        <h1 id="death-text" style="color:red">GAME OVER</h1>
-        <button onclick="showMenu()" style="padding:10px 40px; font-size:1.5rem;">TRY AGAIN</button>
+    <div id="screen-retry" class="full-screen" style="display:none;">
+        <h1 style="color:red; font-size:4rem;">GAME OVER</h1>
+        <button onclick="showMenu()" style="padding:10px 40px; font-size:1.5rem;">RETRY</button>
     </div>
 
-    <div id="jumpscare-overlay"></div>
+    <div id="office-layer"></div>
+    <div id="jumpscare-overlay"><img id="jumpscare-img"></div>
 
     <div id="screen-game" style="display:none;">
-        <div id="office-bg"></div>
         <div id="monitor-overlay">
             <div id="cam-feed"></div>
             <div id="map">
@@ -363,72 +83,73 @@
         </div>
         <button id="btn-heater" class="hud-btn" onclick="toggleHeater()">HEATER</button>
         <button id="btn-musicbox" class="hud-btn" onmousedown="windBox(true)" onmouseup="windBox(false)">MUSIC BOX</button>
-        <button id="btn-light-left" class="hud-btn" onmousedown="setLight('L', true)" onmouseup="setLight('L', false)">LIGHT L</button>
-        <button id="btn-light-right" class="hud-btn" onmousedown="setLight('R', true)" onmouseup="setLight('R', false)">LIGHT R</button>
+        <button id="btn-light-left" class="hud-btn" onmousedown="setL('L', true)" onmouseup="setL('L', false)">LIGHT L</button>
+        <button id="btn-light-right" class="hud-btn" onmousedown="setL('R', true)" onmouseup="setL('R', false)">LIGHT R</button>
         <button id="btn-monitor" class="hud-btn" onclick="toggleMon()">MONITOR</button>
     </div>
 </div>
 
 <script>
     const CHARS = ['Marker','Flower','Leafy','Gelatin','Liy','Clock','Firey','Teardrop','Book','Profiley'];
-    let assets = {}, ai = {}, loop, musicSfx;
+    let loaded = {}, ai = {}, gameLoop, musicRef = null;
     let s = { 
         mon: false, heater: false, cam: 'CAM1', music: 1000, lightL: false, lightR: false,
-        fireyStage: 0, fireyTimer: 0, clockTimer: 0, markerStage: 0, markerTimer: 0,
-        tdTimer: 0, tdGlitch: false, bookSeen: false, profActive: false, liyTimer: 0, 
-        winding: false, pTimer: 0
+        fStage: 0, fTimer: 0, clockTimer: 0, mStage: 0, mTimer: 0, 
+        tdTimer: 0, tdGlitch: false, bookSeen: false, profActive: false, 
+        winding: false, pTimer: 0, heaterTime: 0, rightLightTime: 0
     };
 
     document.getElementById('zip-input').onchange = async (e) => {
         const zip = new JSZip();
         const content = await zip.loadAsync(e.target.files[0]);
-        for(let key in content.files) {
-            assets[key.toLowerCase()] = URL.createObjectURL(await content.files[key].async('blob'));
+        for(let n in content.files) {
+            loaded[n.toLowerCase()] = URL.createObjectURL(await content.files[n].async('blob'));
         }
         showMenu();
     };
 
     function showMenu() {
-        document.querySelectorAll('.screen').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.full-screen').forEach(scr => scr.style.display = 'none');
         document.getElementById('screen-menu').style.display = 'flex';
         document.getElementById('cn-grid').innerHTML = CHARS.map(c => `
-            <div style="background:#111; padding:10px; border:1px solid #333;">
+            <div style="background:#111; padding:10px; border:1px solid #555;">
                 ${c}<br><input type="number" id="ai-${c}" value="0" min="0" max="20" style="width:40px;">
             </div>
         `).join('');
     }
 
-    function playSfx(name) { if(assets[name.toLowerCase()]) new Audio(assets[name.toLowerCase()]).play(); }
+    function playSfx(n) { if(loaded[n.toLowerCase()]) return new Audio(loaded[n.toLowerCase()]).play(); }
 
-    function setLight(side, val) {
+    function setL(side, val) {
         playSfx('Mouse Click - Sound Effect (HD).mp3');
         if(side === 'L') s.lightL = val; else s.lightR = val;
-        if(s.lightL && s.fireyStage === 2) { // Firey Near Left Hall Logic
+        if(s.lightL && s.fStage === 2) { 
             updateOffice();
-            setTimeout(() => triggerJumpscare('Firey'), 1000);
+            setTimeout(() => triggerJumpscare('Firey'), 2000); 
         }
         updateOffice();
     }
 
-    function toggleHeater() {
-        s.heater = !s.heater;
-        playSfx('Mouse Click - Sound Effect (HD).mp3');
-    }
+    function toggleHeater() { s.heater = !s.heater; playSfx('Mouse Click - Sound Effect (HD).mp3'); }
 
     function windBox(val) {
         s.winding = val;
-        if(val && !musicSfx) {
-            musicSfx = new Audio(assets['bfb ost - places (low quality  full version).mp3']);
-            musicSfx.loop = true; musicSfx.play();
-        } else if(!val && musicSfx) { musicSfx.pause(); musicSfx = null; }
+        if(val && !musicRef) {
+            musicRef = new Audio(loaded['bfb ost - places (low quality  full version).mp3']);
+            musicRef.loop = true; musicRef.play();
+        } else if(!val && musicRef) { musicRef.pause(); musicRef = null; }
     }
 
     function toggleMon() {
         playSfx('Mouse Click - Sound Effect (HD).mp3');
         s.mon = !s.mon;
-        document.getElementById('monitor-overlay').style.display = s.mon ? 'block' : 'none';
         if(s.mon) playSfx('RadioStatic.mp3');
-        if(!s.mon && s.bookSeen) triggerJumpscare('Book');
+        document.getElementById('monitor-overlay').style.display = s.mon ? 'block' : 'none';
+        
+        if(!s.mon && s.bookSeen) {
+            if(s.rightLightTime < 3) triggerJumpscare('Book');
+            else s.bookSeen = false;
+        }
         updateCams();
     }
 
@@ -436,94 +157,108 @@
 
     function startGame() {
         CHARS.forEach(c => ai[c] = parseInt(document.getElementById('ai-'+c).value));
-        s = { mon:false, heater:false, cam:'CAM1', music:1000, lightL:false, lightR:false, fireyStage:0, fireyTimer:0, clockTimer:0, markerStage:0, markerTimer:0, tdTimer:0, tdGlitch:false, bookSeen:false, profActive:false, winding:false, pTimer:0 };
+        s = { mon:false, heater:false, cam:'CAM1', music:1000, lightL:false, lightR:false, fStage:0, fTimer:0, clockTimer:0, mStage:0, mTimer:0, tdTimer:0, tdGlitch:false, bookSeen:false, profActive:false, winding:false, pTimer:0, heaterTime:0, rightLightTime:0 };
         document.getElementById('screen-menu').style.display = 'none';
         document.getElementById('screen-game').style.display = 'block';
         updateOffice();
-        loop = setInterval(tick, 100);
+        gameLoop = setInterval(tick, 100);
     }
 
     function tick() {
-        let prob = (Object.values(ai).every(v => v === 20)) ? 0.7 : 0.4;
-        
-        // --- 1. FIREY LOGIC ---
-        if(s.fireyStage === 0 && Math.random() < (ai.Firey/20)*prob) s.fireyStage = 1; // Left Hall
-        if(s.fireyStage === 1 && (s.fireyTimer += 0.1) >= 30) { s.fireyStage = 2; s.fireyTimer = 0; } // Near Door
-        if(s.fireyStage === 2) {
-            s.fireyTimer += 0.1;
-            if(s.fireyTimer >= 15 && !s.lightL) { // Avoided
-                if(s.fireyTimer >= 25) { s.fireyStage = 0; s.fireyTimer = 0; }
-            }
+        let diff = (Object.values(ai).every(v => v === 20)) ? 0.7 : 0.4;
+
+        // 1. FIREY: CAM1 -> 30s -> Door -> 15s Stare
+        if(s.fStage === 0 && Math.random() < (ai.Firey/20)*diff) s.fStage = 1;
+        if(s.fStage === 1 && (s.fTimer += 0.1) >= 30) { s.fStage = 2; s.fTimer = 0; }
+        if(s.fStage === 2) {
+            s.fTimer += 0.1;
+            if(s.fTimer >= 10 && !s.lightL) { s.fStage = 0; s.fTimer = 0; }
         }
 
-        // --- 2. CLOCK LOGIC ---
+        // 2. CLOCK: CAM4 -> 30s Reset
         if(!s.mon || s.cam !== 'CAM4') s.clockTimer += 0.1; else s.clockTimer = 0;
         if(s.clockTimer >= 30 && s.mon && s.cam === 'CAM4') {
             updateCams();
             setTimeout(() => triggerJumpscare('Clock'), 2000);
         }
 
-        // --- 3. MARKER & GELATIN ---
-        if(s.markerStage === 0 && Math.random() < 0.01) s.markerStage = 1; // Closet
-        if(s.markerStage === 1 && (s.markerTimer += 0.1) >= 30) { s.markerStage = 2; s.markerTimer = 0; } // Right Hall
-        if(s.markerStage === 2) {
-            if(s.heater) { s.markerTimer += 0.1; if(s.markerTimer >= 6) s.markerStage = 0; }
-            else { if((s.markerTimer += 0.1) > 15) triggerJumpscare('Marker'); }
+        // 3. MARKER/GELATIN: Heater Defense
+        if(s.mStage === 0 && Math.random() < (ai.Marker/20)*diff) s.mStage = 1;
+        if(s.mStage === 1 && (s.mTimer += 0.1) >= 30) { s.mStage = 2; s.mTimer = 0; }
+        if(s.mStage === 2) {
+            if(s.heater) { s.heaterTime += 0.1; if(s.heaterTime >= 6) { s.mStage = 0; s.heaterTime = 0; } }
+            else { s.mTimer += 0.1; if(s.mTimer > 15) triggerJumpscare('Marker'); }
         }
 
-        // --- 4. TEARDROP GLITCH ---
-        if(s.mon && s.cam === 'CAM1' && ai.Teardrop > 0) {
+        // 4. TEARDROP: CAM1 Glitch
+        if(s.mon && s.cam === 'CAM1' && Math.random() < 0.3) {
             s.tdTimer += 0.1;
-            if(s.tdTimer >= 8) { s.tdGlitch = true; updateCams();
-                setTimeout(() => { if(!s.heater) triggerJumpscare('Teardrop'); else { s.tdGlitch = false; s.tdTimer = 0; }}, 2000);
+            if(s.tdTimer >= 8) {
+                s.tdGlitch = true; updateCams();
+                setTimeout(() => { if(!s.heater) triggerJumpscare('Teardrop'); else { s.tdGlitch = false; s.tdTimer = 0; }}, 1000);
             }
         }
 
-        // --- 5. FLOWER MUSIC BOX ---
-        if(s.winding) s.music = Math.min(1000, s.music + 20); else s.music -= (ai.Flower * 0.1);
-        if(s.music <= 0) triggerJumpscare('Flower');
+        // 5. LEAFY: Heater Defense
+        if(Math.random() < (ai.Leafy/20)*0.8) {
+            if(!s.heater) { s.lTimer = (s.lTimer||0)+0.1; if(s.lTimer > 10) triggerJumpscare('Leafy'); }
+            else { s.lTimer = 0; }
+        }
 
-        // --- 6. PROFILEY ---
+        // 6. FLOWER: Music Box
+        if(s.winding) s.music = Math.min(1000, s.music + 20); else s.music -= (ai.Flower * 0.1);
+        if(s.music <= 0 && Math.random() < 0.4) triggerJumpscare('Flower');
+
+        // 7. PROFILEY: Cinematic Boom
         if(Math.random() < 0.001 && ai.Profiley > 0) {
             playSfx('CinematicBoom.mp3');
-            setTimeout(() => { s.profActive = true; updateOffice(); }, 1000);
+            setTimeout(() => { s.profActive = true; s.pTimer = 0; updateOffice(); }, 500);
         }
         if(s.profActive) {
-            if(s.heater) { s.pTimer += 0.1; if(s.pTimer >= 3) { s.profActive = false; s.pTimer = 0; updateOffice(); } }
+            if(s.heater) { s.pTimer += 0.1; if(s.pTimer >= 3) { s.profActive = false; updateOffice(); } }
             else { s.pTimer += 0.1; if(s.pTimer > 5) triggerJumpscare('Profiley'); }
         }
+
+        if(s.lightR && s.bookSeen) s.rightLightTime += 0.1;
     }
 
     function updateOffice() {
-        let img = assets['office.png'];
-        if(s.profActive) img = assets['profileyoffice.png'];
-        else if(s.lightL) img = (s.fireyStage === 2) ? assets['fireyleftwithlight.png'] : assets['officeleftlight.png'];
-        else if(s.lightR) img = (Math.random() < 0.4) ? assets['liyinrighthallwindow.png'] : assets['officerightlight.png'];
-        document.getElementById('office-bg').style.backgroundImage = `url(${img})`;
+        let img = loaded['office.png'];
+        if(s.profActive) img = loaded['profileyoffice.png'];
+        else if(s.lightL) img = (s.fStage === 2) ? loaded['fireyleftwithlight.png'] : loaded['officeleftlight.png'];
+        else if(s.lightR) img = (Math.random() < 0.4) ? loaded['liyinrighthallwindow.png'] : loaded['officerightlight.png'];
+        document.getElementById('office-layer').style.backgroundImage = `url(${img})`;
     }
 
     function updateCams() {
         let img = '';
-        if(s.cam === 'CAM1') img = s.tdGlitch ? assets['teardroprun.png'] : (s.fireyStage === 1 ? assets['fireylefthall.png'] : assets['lefthallempty.webp']);
-        if(s.cam === 'CAM2') img = (s.markerStage === 2) ? assets['markerrighthall.png'] : assets['righthallempty.webp'];
-        if(s.cam === 'CAM3') {
-            if(Math.random() < 0.25) { img = assets['booksupplycloset.png']; s.bookSeen = true; }
-            else img = s.markerStage === 1 ? assets['supplyclosetmarker.png'] : assets['supplyclosetempty.webp'];
+        if(s.cam === 'CAM1') {
+            if(s.tdGlitch) img = loaded['teardroprun.png'];
+            else if(s.fStage === 1) img = loaded['fireylefthall.png'];
+            else if(Math.random() < 0.8) img = loaded['leafylefthall.png'];
+            else img = loaded['lefthallempty.webp'];
         }
-        if(s.cam === 'CAM4') img = s.clockTimer >= 30 ? assets['partsorservicegameover.webp'] : assets['clockpartsorservice.png'];
+        if(s.cam === 'CAM2') img = (s.mStage === 2) ? loaded['markerrighthall.png'] : loaded['righthallempty.webp'];
+        if(s.cam === 'CAM3') {
+            if(Math.random() < 0.25) { img = loaded['booksupplycloset.png']; s.bookSeen = true; }
+            else if(s.mStage === 1) img = loaded['supplyclosetmarker.png'];
+            else img = loaded['supplyclosetempty.webp'];
+        }
+        if(s.cam === 'CAM4') img = (s.clockTimer >= 30) ? loaded['partsorservicegameover.webp'] : loaded['clockpartsorservice.png'];
         document.getElementById('cam-feed').style.backgroundImage = `url(${img})`;
     }
 
     function triggerJumpscare(who) {
-        clearInterval(loop);
+        clearInterval(gameLoop);
         const sfx = ['Gelatin','Profiley','Marker'].includes(who) ? 'GelatinProfileyMarkerJumpscare.mp3' : 'LiyLeafyBookJumpscare.mp3';
         playSfx(sfx);
-        const el = document.getElementById('jumpscare-overlay');
-        el.style.backgroundImage = `url(${assets[who.toLowerCase() + 'jumpscare.png']})`;
-        el.className = 'jumpscare-anim' + (who === 'Teardrop' ? ' td-slide' : '');
-        el.style.display = 'block';
+        const over = document.getElementById('jumpscare-overlay');
+        const img = document.getElementById('jumpscare-img');
+        img.src = loaded[who.toLowerCase() + 'jumpscare.png'];
+        img.className = (who === 'Teardrop') ? 'td-slide oscillate' : 'oscillate';
+        over.style.display = 'block';
         setTimeout(() => {
-            el.style.display = 'none';
+            over.style.display = 'none';
             document.getElementById('screen-game').style.display = 'none';
             document.getElementById('screen-retry').style.display = 'flex';
         }, 3000);
