@@ -2,250 +2,755 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BFDI: Night Shift</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BFDI: Ultimate Custom Night</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
-        :root { --neon: #00ff41; --noise-op: 0.60; --tablet-speed: 0.5s cubic-bezier(0.1, 0.8, 0.2, 1); }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; margin: 0; padding: 0; outline: none; }
-        body, html { width: 100%; height: 100%; background: #000; overflow: hidden; font-family: 'Courier New', monospace; color: white; }
+        @import url('https://fonts.googleapis.com/css2?family=Vt323&display=swap');
+
+        body {
+            margin: 0;
+            background-color: #000;
+            color: #fff;
+            font-family: 'Vt323', monospace;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            overflow: hidden;
+        }
 
         /* --- SCREENS --- */
-        .screen { position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000; }
-        #game-view { display: none; width: 100vw; height: 100vh; position: relative; }
-        #office { position: absolute; inset: 0; background-size: 100% 100%; z-index: 10; }
-        #noise { position: absolute; inset: 0; z-index: 45; pointer-events: none; opacity: var(--noise-op); mix-blend-mode: screen; transition: opacity 0.1s; }
+        .screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out; /* Fade In Animation */
+            z-index: 10;
+            background: #111;
+        }
+
+        .screen.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        /* --- MENU UI --- */
+        h1 { font-size: 4rem; text-shadow: 2px 2px 0 #555; margin: 0 0 20px 0; text-align: center; color: #fff; }
+        h2 { color: #aaa; }
         
-        /* --- UI --- */
-        .btn-ui { background: rgba(0,0,0,0.6); border: 2px solid #fff; color: white; padding: 20px; font-weight: bold; cursor: pointer; z-index: 100; transition: 0.2s; }
-        .btn-ui:hover { background: #fff; color: #000; }
-        #heater-btn { position: absolute; top: 30px; right: 30px; width: 180px; }
-        #heater-btn.on { background: rgba(255, 69, 0, 0.8); border-color: #ff4500; color: #fff; box-shadow: 0 0 20px #ff4500; }
-        #tab-trigger { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 400px; z-index: 1500; border-color: var(--neon); color: var(--neon); }
-
-        /* --- MONITOR --- */
-        #tablet { position: absolute; inset: 0; background: #000; z-index: 700; display: flex; flex-direction: column; align-items: center; justify-content: center; transform: translateY(105%); transition: transform var(--tablet-speed); }
-        #tablet.up { transform: translateY(0%); }
-        #cam-view { width: 95vw; height: 60vh; border: 6px solid #fff; background-size: 100% 100%; position: relative; background-color: #050505; }
-        .cam-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 20px; width: 95vw; }
-
-        /* --- JUMPSCARE & DEFEAT --- */
-        #js-layer { display: none; position: fixed; inset: 0; z-index: 10000; background: #000; overflow: hidden; }
-        #js-img { width: 115%; height: 115%; object-fit: cover; position: absolute; bottom: -100%; left: -7.5%; transition: bottom 0.2s linear; }
+        button {
+            background: transparent;
+            border: 2px solid #fff;
+            color: #fff;
+            padding: 10px 25px;
+            font-family: 'Vt323', monospace;
+            font-size: 1.8rem;
+            cursor: pointer;
+            margin: 10px;
+            transition: 0.2s;
+            text-transform: uppercase;
+        }
+        button:hover { background: #fff; color: #000; }
         
-        .oscillate { animation: shake 0.1s infinite alternate, motionBlur 0.1s infinite; }
-        @keyframes shake { from { transform: translate(4px, 4px) rotate(-1deg); } to { transform: translate(-4px, -4px) rotate(1deg); } }
-        @keyframes motionBlur { 0% { filter: blur(6px); transform: skewX(3deg); } 50% { filter: blur(0px); transform: skewX(0deg); } 100% { filter: blur(6px); transform: skewX(-3deg); } }
+        .upload-zone { border: 3px dashed #666; padding: 50px; text-align: center; }
 
-        #death-overlay { display: none; position: fixed; inset: 0; z-index: 11000; background: rgba(150, 0, 0, 0); transition: background 1.5s; }
+        /* --- UCN GRID --- */
+        #cn-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+            max-width: 900px;
+            margin-bottom: 20px;
+        }
+        .cn-char {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #222;
+            padding: 10px;
+            border: 1px solid #444;
+        }
+        .cn-name { font-size: 1.2rem; margin-bottom: 5px; }
+        .cn-input {
+            background: #000;
+            color: #0f0;
+            border: 1px solid #0f0;
+            width: 50px;
+            text-align: center;
+            font-family: inherit;
+            font-size: 1.5rem;
+        }
+
+        /* --- GAMEPLAY VIEW --- */
+        #office-view {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-size: cover;
+            background-position: center;
+            z-index: 1;
+            transition: background-image 0.1s;
+        }
+
+        /* HUD Buttons */
+        .hud-btn {
+            position: absolute;
+            background: rgba(0,0,0,0.6);
+            border: 2px solid #fff;
+            color: #fff;
+            font-family: 'Vt323';
+            cursor: pointer;
+            z-index: 20;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .hud-btn:hover { background: rgba(255,255,255,0.2); }
+
+        #btn-heater { top: 20px; right: 20px; width: 120px; height: 50px; border-color: white; }
+        #btn-heater.active { background-color: rgba(255, 50, 50, 0.7); border-color: red; }
         
-        #defeat-screen { display: none; position: fixed; inset: 0; z-index: 12000; background: #000; flex-direction: column; align-items: center; justify-content: center; opacity: 0; transition: opacity 1s; }
-        .defeat-text { color: red; font-size: 8rem; font-weight: bold; animation: textShake 0.2s infinite; margin-bottom: 10px; }
-        .killed-by { color: #888; font-size: 2rem; margin-bottom: 40px; text-transform: uppercase; letter-spacing: 5px; }
+        #btn-musicbox { top: 80px; right: 20px; width: 120px; height: 50px; border-color: cyan; }
+        #btn-musicbox.active { background-color: rgba(0, 255, 255, 0.4); }
 
-        @keyframes textShake { 0% { transform: translate(2px, 0); } 25% { transform: translate(-2px, 2px); } 50% { transform: translate(0, -2px); } 75% { transform: translate(2px, 2px); } 100% { transform: translate(-2px, 0); } }
+        #btn-light-left { top: 40%; left: 0; width: 60px; height: 120px; border-right: none; }
+        #btn-light-right { top: 40%; right: 0; width: 60px; height: 120px; border-left: none; }
+        
+        #btn-monitor { bottom: 20px; left: 50%; transform: translateX(-50%); width: 300px; height: 50px; font-size: 1.5rem; }
+
+        /* --- MONITOR SYSTEM --- */
+        #monitor-screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            z-index: 30;
+            display: none;
+            border: 5px solid #333;
+            box-sizing: border-box;
+        }
+        #cam-feed {
+            width: 100%; height: 100%;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        #map-overlay {
+            position: absolute;
+            bottom: 20px; right: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border: 2px solid #555;
+        }
+        .cam-btn { font-size: 1.2rem; padding: 5px; width: 90px; border: 1px solid #0f0; color: #0f0; background: #000; }
+        .cam-btn.active { background: #0f0; color: #000; }
+
+        /* --- JUMPSCARE --- */
+        #jumpscare-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: black;
+            z-index: 200;
+            display: none;
+        }
+        #jumpscare-img {
+            width: 100%; height: 100%;
+            object-fit: cover;
+        }
+        
+        /* Motion Blur & Shake */
+        @keyframes aggressive-shake {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            25% { transform: translate(-10px, 10px) rotate(-5deg); filter: blur(2px); }
+            50% { transform: translate(10px, -10px) rotate(5deg); filter: blur(4px); }
+            75% { transform: translate(-10px, -10px) rotate(-5deg); filter: blur(2px); }
+            100% { transform: translate(10px, 10px) rotate(5deg); }
+        }
+        .shaking { animation: aggressive-shake 0.1s infinite; }
+        .glitch-effect { filter: hue-rotate(90deg) contrast(200%) invert(10%); }
+
     </style>
 </head>
 <body>
 
-    <div id="setup-menu" class="screen">
-        <h1 style="color:red; font-size: 3rem; margin-bottom: 20px;">BFDI: NIGHT SHIFT</h1>
-        <input type="file" id="zip-in" style="margin-bottom: 20px; color:white;">
-        <button id="start-btn" class="btn-ui" style="display:none; color:var(--neon); border-color:var(--neon);" onclick="launch()">START NIGHT</button>
+<div id="game-container">
+    
+    <div id="jumpscare-overlay">
+        <img id="jumpscare-img" src="" alt="Jumpscare">
     </div>
 
-    <div id="game-view">
-        <div style="position:absolute; top:30px; left:30px; z-index:100; font-size:4rem;" id="clock-txt">12 AM</div>
-        <button id="heater-btn" class="btn-ui" onmousedown="setHeat(true)" onmouseup="setHeat(false)" ontouchstart="setHeat(true)" ontouchend="setHeat(false)">HEATER</button>
-        <canvas id="noise"></canvas>
-        <div id="office"></div>
-        
-        <button class="btn-ui" style="position:absolute; left:30px; bottom:38%; width:150px;" onmousedown="lt('l',true)" onmouseup="lt('l',false)">LIGHT L</button>
-        <button class="btn-ui" style="position:absolute; right:30px; bottom:38%; width:150px;" onmousedown="lt('r',true)" onmouseup="lt('r',false)">LIGHT R</button>
-        
-        <button id="tab-trigger" class="btn-ui" onclick="toggleTab()">MONITOR</button>
+    <div id="screen-upload" class="screen active">
+        <h1>BFDI ASSETS IMPORT</h1>
+        <div class="upload-zone">
+            <p>Upload 'assets.zip'</p>
+            <input type="file" id="zip-input" accept=".zip">
+        </div>
+        <p id="loading-text" style="color: yellow; margin-top:20px;"></p>
+    </div>
 
-        <div id="tablet">
-            <div id="cam-view"><div id="cam-tag" style="padding:10px; background:rgba(0,0,0,0.8); border:1px solid #fff; position:absolute; top:10px; left:10px;">CAM 1</div></div>
-            <div class="cam-grid">
-                <button class="btn-ui" onclick="goCam('l','CAM 1')">CAM 1</button>
-                <button class="btn-ui" onclick="goCam('r','CAM 2')">CAM 2</button>
-                <button class="btn-ui" onclick="goCam('s','CAM 3')">CAM 3</button>
-                <button class="btn-ui" onclick="goCam('p','CAM 4')">CAM 4</button>
+    <div id="screen-menu" class="screen">
+        <h1>BFDI NIGHTS</h1>
+        <button onclick="showScreen('screen-mode')">Play</button>
+        <button onclick="showScreen('screen-options')">Options</button>
+    </div>
+
+    <div id="screen-mode" class="screen">
+        <h1>SELECT MODE</h1>
+        <button onclick="startGame('nightshift')">Night Shift (Normal)</button>
+        <button onclick="startGame('hardcore')">Hardcore (Agro)</button>
+        <button onclick="showScreen('screen-custom')">Custom Night (UCN)</button>
+        <button onclick="showScreen('screen-menu')">Back</button>
+    </div>
+
+    <div id="screen-custom" class="screen">
+        <h1>ULTIMATE CUSTOM NIGHT</h1>
+        <div id="cn-grid">
+            </div>
+        <div style="margin-top: 20px;">
+            <button onclick="startGame('custom')">START</button>
+            <button onclick="showScreen('screen-mode')">BACK</button>
+        </div>
+    </div>
+
+    <div id="screen-options" class="screen">
+        <h1>SETTINGS</h1>
+        <p>Volume: 100%</p>
+        <p>Animations: ON</p>
+        <button onclick="showScreen('screen-menu')">Back</button>
+    </div>
+
+    <div id="screen-game" class="screen" style="display:none;">
+        
+        <div id="office-view"></div>
+        
+        <button id="btn-heater" class="hud-btn" onmousedown="setHeater(true)" onmouseup="setHeater(false)" onmouseleave="setHeater(false)">HEATER (Space)</button>
+        <button id="btn-musicbox" class="hud-btn" onmousedown="windMusicBox(true)" onmouseup="windMusicBox(false)" onmouseleave="windMusicBox(false)">WIND BOX</button>
+        
+        <button id="btn-light-left" class="hud-btn" onmousedown="setLight('left', true)" onmouseup="setLight('left', false)" onmouseleave="setLight('left', false)">LIGHT</button>
+        <button id="btn-light-right" class="hud-btn" onmousedown="setLight('right', true)" onmouseup="setLight('right', false)" onmouseleave="setLight('right', false)">LIGHT</button>
+
+        <button id="btn-monitor" class="hud-btn" onclick="toggleMonitor()">MONITOR (S)</button>
+
+        <div id="monitor-screen">
+            <div id="cam-feed"></div>
+            <div id="map-overlay">
+                <button class="cam-btn" onclick="switchCam('CAM01')">L. Hall</button>
+                <button class="cam-btn" onclick="switchCam('CAM02')">R. Hall</button>
+                <button class="cam-btn" onclick="switchCam('CAM03')">Closet</button>
+                <button class="cam-btn" onclick="switchCam('CAM04')">Parts/Srv</button>
             </div>
         </div>
     </div>
 
-    <div id="js-layer"><img id="js-img" src=""></div>
-    <div id="death-overlay"></div>
-    
-    <div id="defeat-screen">
-        <div class="defeat-text">DEFEAT</div>
-        <div id="killer-txt" class="killed-by">Killed by Unknown</div>
-        <button class="btn-ui" style="border-color:var(--neon); color:var(--neon); width:250px;" onclick="resetNight()">TRY AGAIN</button>
+    <div id="screen-defeat" class="screen">
+        <h1 style="color: red; font-size: 5rem;">GAME OVER</h1>
+        <h2 id="death-cause"></h2>
+        <button onclick="showScreen('screen-menu')">Menu</button>
     </div>
+</div>
 
-    <script>
-        let assets = {}, active = false, tab = false, cur = 'l', heater = false, heatSecs = 0;
-        let clockSecs = 0, sc = new Audio(), camGlitch = false;
-        let aiInterval;
+<script>
+    /* ---------------- CONSTANTS & STATE ---------------- */
+    const ASSET_LIST = [
+        'Office.png', 'OfficeLeftLight.png', 'OfficeRightLight.png',
+        'FireyLeftwithLight.png', 'FireyLeftHall.png', 'FireyNearLeftHall.png', 'FireyJumpscare.png',
+        'ClockPartsorService.png', 'PartsorServiceGameOver.webp', 'ClockJumpscare.png',
+        'RightHallEmpty.webp', 'LeftHallEmpty.webp', 
+        'MarkerRightHall.png', 'SupplyClosetMarker.png', 'MarkerJumpscare.png', 'SupplyClosetEmpty.webp',
+        'TeardropLeftHall.png', 'TeardropRun.png', 'TeardropJumpscare.png',
+        'BookSupplyCloset.png', 'BookJumpscare.png',
+        'GelatinRightHall.png', 'GelatinJumpscare.png',
+        'LeafyLeftHall.png', 'LeafyJumpscare.png', 'LeafyandFireyLeftHall.png',
+        'FlowerJumpscare.png',
+        'LiyinRightHallWindow.png', 'LiyJumpscare.png',
+        'ProfileyOffice.png', 'ProfileyJumpscare.png',
+        'JumpscareAudio.mp3', 'Mouse Click - Sound Effect (HD).mp3', 'BFB Ost - Places (Low Quality  FULL VERSION).mp3',
+        'GelatinProfileyMarkerJumpscare.mp3', 'LiyLeafyBookJumpscare.mp3', 'CinematicBoom.mp3', 'RadioStatic.mp3'
+    ];
+
+    const CHARACTERS = ['Marker', 'Gelatin', 'Firey', 'Leafy', 'Flower', 'Book', 'Clock', 'Teardrop', 'Liy', 'Profiley'];
+    
+    let assets = {};
+    let aiLevels = {};
+    let gameState = 'menu'; // menu, game, gameover
+    let gameLoopInt, aiLoopInt;
+
+    // Player State
+    let player = {
+        cam: 'CAM01',
+        monitor: false,
+        heater: false,
+        lightLeft: false,
+        lightRight: false,
+        musicWinding: false,
+        rightLightTimer: 0, // For Liy mechanic
+        monitorCloseTimer: 0 // For Book mechanic
+    };
+
+    // AI State
+    let ai = {
+        firey: { stage: 0, timer: 0 }, // 0:Off, 1:Hall, 2:Near
+        marker: { stage: 0, timer: 0 }, // 0:Off, 1:Closet, 2:R.Hall
+        teardrop: { stage: 0, stareTimer: 0, running: false },
+        book: { active: false },
+        gelatin: { active: false, timer: 0 },
+        leafy: { stage: 0 }, // 0:Off, 1:L.Hall, 2:WithFirey
+        clock: { timer: 1000, dead: false },
+        flower: { boxTimer: 1000 },
+        liy: { active: false },
+        profiley: { inOffice: false, timer: 0 }
+    };
+
+    /* ---------------- INITIALIZATION ---------------- */
+    // Generate UCN Grid
+    const cnGrid = document.getElementById('cn-grid');
+    CHARACTERS.forEach(char => {
+        let div = document.createElement('div');
+        div.className = 'cn-char';
+        div.innerHTML = `<span class="cn-name">${char}</span><input type="number" id="lvl-${char}" class="cn-input" min="0" max="20" value="0">`;
+        cnGrid.appendChild(div);
+    });
+
+    // ZIP Handling
+    document.getElementById('zip-input').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
         
-        let ai = {
-            f: { state: 'idle', t: 0 }, m: { state: 'closet', t: 0 },
-            b: { state: 'closet', t: 0 }, t: { state: 'idle', t: 0 },
-            g: { t: 0 }, c: { t: 0 }
+        document.getElementById('loading-text').innerText = "Decrypting Assets...";
+        const zip = new JSZip();
+        try {
+            const content = await zip.loadAsync(file);
+            let loaded = 0;
+            
+            for(let name of ASSET_LIST) {
+                // Case insensitive search
+                let foundKey = Object.keys(content.files).find(k => k.toLowerCase() === name.toLowerCase());
+                if(foundKey) {
+                    const blob = await content.files[foundKey].async('blob');
+                    assets[name] = URL.createObjectURL(blob);
+                    loaded++;
+                } else {
+                    console.warn("Missing:", name);
+                }
+            }
+            
+            if(loaded > 0) {
+                document.getElementById('loading-text').innerText = "Complete!";
+                // Start Menu Music
+                playAudio('BFB Ost - Places (Low Quality  FULL VERSION).mp3', true);
+                setTimeout(() => showScreen('screen-menu'), 1000);
+            }
+        } catch(err) {
+            alert("Error with ZIP file");
+            console.error(err);
+        }
+    });
+
+    /* ---------------- ENGINE ---------------- */
+    function showScreen(id) {
+        playSfx('Mouse Click - Sound Effect (HD).mp3');
+        document.querySelectorAll('.screen').forEach(s => {
+            s.classList.remove('active');
+            setTimeout(() => { if(!s.classList.contains('active')) s.style.display = 'none'; }, 500);
+        });
+        const t = document.getElementById(id);
+        t.style.display = 'flex';
+        // Force reflow
+        void t.offsetWidth;
+        t.classList.add('active');
+    }
+
+    function playSfx(name) {
+        if(assets[name]) new Audio(assets[name]).play();
+    }
+    
+    let bgMusic = null;
+    function playAudio(name, loop=false) {
+        if(!assets[name]) return;
+        if(bgMusic) bgMusic.pause();
+        bgMusic = new Audio(assets[name]);
+        bgMusic.loop = loop;
+        bgMusic.volume = 0.6;
+        bgMusic.play().catch(e=>console.log("Autoplay blocked"));
+    }
+
+    /* ---------------- GAME LOGIC ---------------- */
+    function startGame(mode) {
+        playSfx('Mouse Click - Sound Effect (HD).mp3');
+        
+        // Reset Logic
+        player = { cam:'CAM01', monitor:false, heater:false, lightLeft:false, lightRight:false, musicWinding:false, rightLightTimer:0, monitorCloseTimer:0 };
+        
+        // Reset AI State
+        ai = {
+            firey: { stage: 0, timer: 0 },
+            marker: { stage: 0, timer: 0 },
+            teardrop: { stage: 0, stareTimer: 0, running: false },
+            book: { active: false },
+            gelatin: { active: false, timer: 0 },
+            leafy: { stage: 0 },
+            clock: { timer: 1000, dead: false },
+            flower: { boxTimer: 1000 },
+            liy: { active: false },
+            profiley: { inOffice: false, timer: 0 }
         };
 
-        document.getElementById('zip-in').onchange = async (e) => {
-            const zip = await JSZip.loadAsync(e.target.files[0]);
-            for (let f in zip.files) {
-                const b = await zip.file(f).async("blob");
-                assets[f] = URL.createObjectURL(b);
+        // Set Levels
+        CHARACTERS.forEach(c => aiLevels[c] = 0);
+        
+        if(mode === 'nightshift') CHARACTERS.forEach(c => aiLevels[c] = 2);
+        else if(mode === 'hardcore') CHARACTERS.forEach(c => aiLevels[c] = 20);
+        else {
+            CHARACTERS.forEach(c => {
+                aiLevels[c] = parseInt(document.getElementById(`lvl-${c}`).value) || 0;
+            });
+        }
+
+        gameState = 'game';
+        showScreen('screen-game');
+        updateOffice();
+
+        // Loops
+        clearInterval(gameLoopInt);
+        clearInterval(aiLoopInt);
+        gameLoopInt = setInterval(gameTick, 100); // 10fps physics
+        aiLoopInt = setInterval(aiMove, 5000); // 5s AI ticks
+    }
+
+    /* --- REALTIME TICKS (100ms) --- */
+    function gameTick() {
+        if(gameState !== 'game') return;
+
+        // 1. HEATER LOGIC
+        if(player.heater) {
+            // Marker
+            if(ai.marker.stage === 2) {
+                ai.marker.timer += 0.1;
+                if(ai.marker.timer >= 6) { ai.marker.stage = 0; console.log("Marker repelled"); }
             }
-            if (assets['JumpscareAudio.mp3']) sc.src = assets['JumpscareAudio.mp3'];
-            document.getElementById('start-btn').style.display = 'block';
-        };
-
-        function launch() {
-            active = true;
-            document.getElementById('setup-menu').style.display = 'none';
-            document.getElementById('defeat-screen').style.display = 'none';
-            document.getElementById('game-view').style.display = 'block';
-            document.getElementById('office').style.backgroundImage = `url(${assets['Office.png']})`;
-            
-            aiInterval = setInterval(() => {
-                if (!active) return;
-                clockSecs++;
-                document.getElementById('clock-txt').innerText = Math.floor(clockSecs/60) + " AM";
-                if(heater) heatSecs++; else heatSecs = 0;
-
-                // Marker Logic
-                if (ai.m.state === 'closet') {
-                    ai.m.t++; if(ai.m.t > 30) { ai.m.state = 'hall'; ai.m.t = 0; glitch(); }
-                }
-                if (ai.m.state === 'hall') {
-                    if (heater && heatSecs >= 6) { ai.m.state = 'gone'; }
-                    else { ai.m.t++; if(ai.m.t > 40) triggerJS('MarkerJumpscare.png', 'Marker'); }
-                }
-
-                // Gelatin Logic
-                ai.g.t++;
-                if (ai.g.t > 50) {
-                    if (heater && heatSecs >= 10) { ai.g.t = 0; }
-                    else triggerJS('GelatinJumpscare.png', 'Gelatin');
-                }
-            }, 1000);
-            drawStatic();
-        }
-
-        function glitch() {
-            document.getElementById('noise').style.opacity = '1';
-            setTimeout(() => { document.getElementById('noise').style.opacity = '0.60'; renderCams(); }, 250);
-        }
-
-        function toggleTab() {
-            tab = !tab;
-            document.getElementById('tablet').classList.toggle('up', tab);
-            glitch();
-        }
-
-        function goCam(id, tag) {
-            cur = id;
-            document.getElementById('cam-tag').innerText = tag;
-            glitch();
-        }
-
-        function renderCams() {
-            const v = document.getElementById('cam-view');
-            let bg = assets['LeftHallEmpty.webp'];
-            if (cur === 'l') {
-                let rng = Math.random() * 100;
-                if (rng < 50) bg = assets['LeftHallEmpty.webp'];
-                else if (rng < 75) bg = assets['FireyLeftHall.png'];
-                else if (rng < 95) bg = assets['LeafyLeftHall.png'];
-                else bg = assets['LeafyandFireyLeftHall.png'];
-            } 
-            else if (cur === 'r') {
-                bg = assets['RightHallEmpty.webp'];
-                if (ai.m.state === 'hall') bg = assets['MarkerRightHall.png'];
-                if (ai.g.t > 15) bg = assets['GelatinRightHall.png'];
+            // Gelatin
+            if(ai.gelatin.active) {
+                ai.gelatin.timer += 0.1;
+                if(ai.gelatin.timer >= 5) { ai.gelatin.active = false; console.log("Gelatin repelled"); }
             }
-            else if (cur === 's') {
-                bg = assets['SupplyClosetEmpty.webp'];
-                if (ai.m.state === 'closet') bg = assets['SupplyClosetMarker.png'];
+            // Profiley
+            if(ai.profiley.inOffice) {
+                ai.profiley.timer += 0.1;
+                if(ai.profiley.timer >= 3) { 
+                    ai.profiley.inOffice = false; 
+                    updateOffice(); 
+                }
             }
-            v.style.backgroundImage = `url(${bg})`;
+            // Teardrop & Leafy repelled by heater generally
+            if(ai.teardrop.stage === 1) ai.teardrop.stage = 0;
+            if(ai.leafy.stage === 1) ai.leafy.stage = 0;
         }
 
-        function lt(side, on) {
-            if (tab) return;
-            let img = assets[on ? (side === 'l' ? 'OfficeLeftLight.png' : 'OfficeRightLight.png') : 'Office.png'];
-            document.getElementById('office').style.backgroundImage = `url(${img})`;
+        // 2. LIGHT LOGIC
+        if(player.lightLeft) {
+            // Firey Trap
+            if(ai.firey.stage === 2) {
+                // Triggered trap
+                updateOffice(); // Shows FireyLeftwithLight
+                setTimeout(() => die('Firey'), 2000);
+                gameState = 'dying'; 
+            }
+        }
+        
+        if(player.lightRight) {
+            player.rightLightTimer += 0.1;
+            // Liy Mechanic (Don't hold forever)
+            if(player.rightLightTimer > 5) { // 5s threshold
+                die('Liy');
+            }
+            // Book Counter (Grace period after monitor down)
+            if(player.monitorCloseTimer > 0 && player.monitorCloseTimer < 3) {
+                // Successfully blocked Book
+                if(ai.book.active) ai.book.active = false; 
+            }
+        } else {
+            player.rightLightTimer = 0;
         }
 
-        function setHeat(on) { heater = on; document.getElementById('heater-btn').classList.toggle('on', on); }
+        // 3. BOOK KILL TIMER
+        if(!player.monitor && ai.book.active) {
+            player.monitorCloseTimer += 0.1;
+            if(player.monitorCloseTimer >= 3) {
+                die('Book');
+            }
+        } else {
+            player.monitorCloseTimer = 0;
+        }
 
-        function triggerJS(file, name) {
-            if (!active) return;
-            active = false;
-            clearInterval(aiInterval);
-            document.getElementById('tablet').classList.remove('up');
-            
-            const jsLayer = document.getElementById('js-layer');
-            const jsImg = document.getElementById('js-img');
-            jsLayer.style.display = 'block';
-            jsImg.src = assets[file];
-            jsImg.classList.add('oscillate');
-            if (sc.src) sc.play();
+        // 4. MUSIC BOX (FLOWER)
+        if(player.musicWinding) {
+            ai.flower.boxTimer += 5;
+            if(ai.flower.boxTimer > 1000) ai.flower.boxTimer = 1000;
+        } else {
+            ai.flower.boxTimer -= (0.5 + (aiLevels.Flower * 0.1)); // Drains faster with level
+            if(ai.flower.boxTimer <= 0) die('Flower');
+        }
 
-            setTimeout(() => { jsImg.style.bottom = '0'; }, 50);
+        // 5. CLOCK TIMER
+        if(!player.monitor || player.cam !== 'CAM04') {
+             ai.clock.timer -= 0.5;
+        } else {
+            // Looking at CAM04 winds clock? Prompt says "leaves for a while and comes back... switch to gameover".
+            // Implementation: Looking at clock refreshes it unless it's already 0.
+            if(ai.clock.timer > 0) ai.clock.timer = 1000;
+        }
+        if(ai.clock.timer <= 0 && !ai.clock.dead) {
+            ai.clock.dead = true;
+            // Triggers visual change in cam, then death.
+        }
 
-            // Red Death Sequence
-            setTimeout(() => {
-                const overlay = document.getElementById('death-overlay');
-                overlay.style.display = 'block';
-                setTimeout(() => { overlay.style.background = 'rgba(200, 0, 0, 0.8)'; }, 100);
-                
+        // 6. TEARDROP STARE
+        if(player.monitor && player.cam === 'CAM01' && ai.teardrop.stage === 1) {
+            ai.teardrop.stareTimer += 0.1;
+            if(ai.teardrop.stareTimer >= 8 && !ai.teardrop.running) {
+                ai.teardrop.running = true;
+                const feed = document.getElementById('cam-feed');
+                feed.style.backgroundImage = `url(${assets['TeardropRun.png']})`;
                 setTimeout(() => {
-                    document.getElementById('killer-txt').innerText = "Killed by " + name;
-                    const ds = document.getElementById('defeat-screen');
-                    ds.style.display = 'flex';
-                    setTimeout(() => ds.style.opacity = '1', 50);
-                }, 1500);
+                    playSfx('RadioStatic.mp3'); // Glitch noise
+                    feed.classList.add('glitch-effect');
+                    setTimeout(() => die('Teardrop'), 1000);
+                }, 1000);
+            }
+        }
+
+        // 7. FIREY COUNTDOWN (Near)
+        if(ai.firey.stage === 2) {
+            ai.firey.timer += 0.1;
+            if(ai.firey.timer >= 10 && !player.lightLeft) {
+                ai.firey.stage = 0; // Left safely
+                ai.firey.timer = 0;
+            }
+        }
+    }
+
+    /* --- AI MOVEMENT (5s) --- */
+    function aiMove() {
+        if(gameState !== 'game') return;
+
+        // Scaling Chance: Level 20 -> 70% chance (per prompt logic)
+        // Hardcore -> 90%
+        const check = (lvl) => {
+            let chance = (lvl / 20) * 0.7; // Max 0.7
+            if(Object.values(aiLevels).every(x=>x===20)) chance = 0.9; // Hardcore override logic
+            return Math.random() < chance;
+        };
+
+        // MARKER
+        if(check(aiLevels.Marker)) {
+            if(ai.marker.stage === 0) ai.marker.stage = 1; // Closet
+            else if(ai.marker.stage === 1) {
+                ai.marker.stage = 2; // R.Hall
+                setTimeout(() => { if(ai.marker.stage === 2) die('Marker'); }, 15000); // Kill if handled
+            }
+        }
+
+        // GELATIN
+        if(check(aiLevels.Gelatin)) {
+            if(!ai.gelatin.active) {
+                ai.gelatin.active = true;
+                setTimeout(() => { if(ai.gelatin.active) die('Gelatin'); }, 8000);
+            }
+        }
+
+        // FIREY
+        if(check(aiLevels.Firey)) {
+            if(ai.firey.stage === 0) ai.firey.stage = 1;
+            else if(ai.firey.stage === 1) { ai.firey.stage = 2; ai.firey.timer = 0; }
+        }
+
+        // TEARDROP
+        if(check(aiLevels.Teardrop) && ai.teardrop.stage === 0) ai.teardrop.stage = 1;
+
+        // LEAFY
+        if(check(aiLevels.Leafy)) {
+            // 30% chance to merge with Firey if Firey is in Hall
+            if(ai.firey.stage === 1 && Math.random() < 0.3) ai.leafy.stage = 2;
+            else ai.leafy.stage = 1;
+            
+            setTimeout(() => { if(ai.leafy.stage > 0) die('Leafy'); }, 10000);
+        }
+
+        // BOOK
+        if(check(aiLevels.Book)) {
+            // Replaces Marker if present in closet, high priority
+            ai.book.active = true;
+        }
+
+        // PROFILEY (Random event)
+        if(Math.random() < 0.1 && !ai.profiley.inOffice) { // Low chance per tick
+            playSfx('CinematicBoom.mp3');
+            setTimeout(() => {
+                // 50% chance to appear
+                if(Math.random() < 0.5) {
+                    ai.profiley.inOffice = true;
+                    playSfx('RadioStatic.mp3');
+                    updateOffice();
+                    setTimeout(() => { if(ai.profiley.inOffice) die('Profiley'); }, 5000);
+                }
             }, 1000);
         }
 
-        function resetNight() {
-            // Reset Data
-            clockSecs = 0;
-            heatSecs = 0;
-            ai = {
-                f: { state: 'idle', t: 0 }, m: { state: 'closet', t: 0 },
-                b: { state: 'closet', t: 0 }, t: { state: 'idle', t: 0 },
-                g: { t: 0 }, c: { t: 0 }
-            };
-            
-            // UI Reset
-            document.getElementById('js-layer').style.display = 'none';
-            document.getElementById('death-overlay').style.display = 'none';
-            document.getElementById('death-overlay').style.background = 'rgba(150, 0, 0, 0)';
-            document.getElementById('js-img').style.bottom = '-100%';
-            document.getElementById('js-img').classList.remove('oscillate');
-            
-            launch();
+        updateMonitor();
+    }
+
+    /* ---------------- CONTROLS ---------------- */
+    function setHeater(on) { 
+        player.heater = on; 
+        document.getElementById('btn-heater').classList.toggle('active', on);
+        if(on) playSfx('Mouse Click - Sound Effect (HD).mp3');
+    }
+    
+    function windMusicBox(on) {
+        player.musicWinding = on;
+        document.getElementById('btn-musicbox').classList.toggle('active', on);
+    }
+
+    function setLight(side, on) {
+        if(side === 'left') player.lightLeft = on;
+        if(side === 'right') player.lightRight = on;
+        playSfx('Mouse Click - Sound Effect (HD).mp3');
+        updateOffice();
+    }
+
+    function toggleMonitor() {
+        if(gameState !== 'game') return;
+        player.monitor = !player.monitor;
+        const mon = document.getElementById('monitor-screen');
+        
+        playSfx('Mouse Click - Sound Effect (HD).mp3');
+        
+        if(player.monitor) {
+            mon.style.display = 'block';
+            playSfx('RadioStatic.mp3');
+            updateMonitor();
+        } else {
+            mon.style.display = 'none';
+        }
+    }
+
+    function switchCam(id) {
+        player.cam = id;
+        playSfx('Mouse Click - Sound Effect (HD).mp3');
+        // Visual Static
+        const feed = document.getElementById('cam-feed');
+        feed.style.opacity = 0.5;
+        setTimeout(()=>feed.style.opacity = 1, 100);
+        
+        document.querySelectorAll('.cam-btn').forEach(b => b.classList.remove('active'));
+        // Find button by text roughly or logic
+        updateMonitor();
+    }
+
+
+    /* ---------------- VISUALS ---------------- */
+    function updateOffice() {
+        const view = document.getElementById('office-view');
+        let img = assets['Office.png'];
+
+        // Profiley overrides everything if in office
+        if(ai.profiley.inOffice) {
+            img = assets['ProfileyOffice.png'];
+        } else {
+            if(player.lightLeft) {
+                if(ai.firey.stage === 2) img = assets['FireyLeftwithLight.png'];
+                else img = assets['OfficeLeftLight.png'];
+            }
+            if(player.lightRight) {
+                // Liy Chance
+                if(Math.random() < 0.4) img = assets['LiyinRightHallWindow.png'];
+                else img = assets['OfficeRightLight.png'];
+            }
+        }
+        
+        if(img) view.style.backgroundImage = `url(${img})`;
+    }
+
+    function updateMonitor() {
+        if(!player.monitor) return;
+        const feed = document.getElementById('cam-feed');
+        let img = '';
+
+        if(player.cam === 'CAM01') { // Left Hall
+            if(ai.leafy.stage === 2) img = assets['LeafyandFireyLeftHall.png'];
+            else if(ai.leafy.stage === 1) img = assets['LeafyLeftHall.png'];
+            else if(ai.teardrop.stage === 1) img = assets['TeardropLeftHall.png'];
+            else if(ai.firey.stage === 1) img = assets['FireyLeftHall.png'];
+            else img = assets['LeftHallEmpty.webp'];
+        }
+        else if(player.cam === 'CAM02') { // Right Hall
+            if(ai.gelatin.active) img = assets['GelatinRightHall.png'];
+            else if(ai.marker.stage === 2) img = assets['MarkerRightHall.png'];
+            else img = assets['RightHallEmpty.webp'];
+        }
+        else if(player.cam === 'CAM03') { // Closet
+            if(ai.book.active) img = assets['BookSupplyCloset.png'];
+            else if(ai.marker.stage === 1) img = assets['SupplyClosetMarker.png'];
+            else img = assets['SupplyClosetEmpty.webp'];
+        }
+        else if(player.cam === 'CAM04') { // Parts
+            if(ai.clock.dead) {
+                img = assets['PartsorServiceGameOver.webp'];
+                setTimeout(() => die('Clock'), 2000);
+            }
+            else img = assets['ClockPartsorService.png'];
         }
 
-        function drawStatic() {
-            const c = document.getElementById('noise'), ctx = c.getContext('2d');
-            c.width = window.innerWidth; c.height = window.innerHeight;
-            function loop() {
-                if (!active) return;
-                const d = ctx.createImageData(c.width, c.height), b = new Uint32Array(d.data.buffer);
-                for (let i=0; i<b.length; i++) b[i] = Math.random() < 0.5 ? 0x25FFFFFF : 0;
-                ctx.putImageData(d, 0, 0);
-                requestAnimationFrame(loop);
-            } loop();
-        }
-    </script>
+        if(img) feed.style.backgroundImage = `url(${img})`;
+    }
+
+    /* ---------------- DEATH SYSTEM ---------------- */
+    function die(killer) {
+        if(gameState === 'gameover') return;
+        gameState = 'gameover';
+
+        // Stop loops
+        clearInterval(gameLoopInt);
+        clearInterval(aiLoopInt);
+
+        // UI Reset
+        document.getElementById('screen-game').style.display = 'none';
+        const jumpImg = document.getElementById('jumpscare-img');
+        const overlay = document.getElementById('jumpscare-overlay');
+        
+        // Select Image
+        let src = assets[`${killer}Jumpscare.png`];
+        jumpImg.src = src;
+        jumpImg.className = 'shaking';
+        
+        // Select Audio based on killer group
+        let audio = 'JumpscareAudio.mp3'; // Default Firey/Teardrop/Clock
+        if(['Gelatin', 'Profiley', 'Marker'].includes(killer)) audio = 'GelatinProfileyMarkerJumpscare.mp3';
+        if(['Liy', 'Leafy', 'Book'].includes(killer)) audio = 'LiyLeafyBookJumpscare.mp3';
+
+        playSfx(audio);
+        overlay.style.display = 'block';
+
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            document.getElementById('death-cause').innerText = "Killed by " + killer;
+            showScreen('screen-defeat');
+            // Assets remain loaded in memory for retry
+        }, 2500);
+    }
+
+</script>
 </body>
     </html>
